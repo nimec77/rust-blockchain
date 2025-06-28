@@ -1,7 +1,7 @@
 use bincode::config::standard;
 use sled::IVec;
 
-use crate::models::transaction::Transaction;
+use crate::{models::transaction::Transaction, util};
 
 #[derive(Clone, bincode::Encode, bincode::Decode)]
 pub struct Block {
@@ -16,7 +16,7 @@ pub struct Block {
 impl Block {
     pub fn new_block(pre_block_hash: String, transactions: &[Transaction], height: usize) -> Block {
         let mut block = Block {
-            timestamp: crate::current_timestamp(),
+            timestamp: util::current_timestamp(),
             pre_block_hash,
             hash: String::new(),
             transactions: transactions.to_vec(),
@@ -70,7 +70,7 @@ impl Block {
         for transaction in &self.transactions {
             txhashs.extend(transaction.get_id());
         }
-        crate::sha256_digest(txhashs.as_slice())
+        util::sha256_digest(txhashs.as_slice())
     }
 
     pub fn generate_genesis_block(transaction: &Transaction) -> Block {
@@ -209,7 +209,7 @@ mod tests {
         let timestamp = block.get_timestamp();
         
         assert!(timestamp > 0);
-        assert!(timestamp <= crate::current_timestamp());
+        assert!(timestamp <= util::current_timestamp());
     }
 
     #[test]
