@@ -1,11 +1,4 @@
-use crate::models::{tx_input::TXInput, tx_output::TXOutput};
-
-#[derive(Clone, bincode::Encode, bincode::Decode)]
-pub struct Transaction {
-    pub id: Vec<u8>,
-    pub vin: Vec<TXInput>,
-    pub vout: Vec<TXOutput>,
-}
+use crate::transaction::transaction::Transaction;
 
 impl Transaction {
     pub fn get_id(&self) -> &[u8] {
@@ -15,6 +8,8 @@ impl Transaction {
 
 #[cfg(test)]
 mod tests {
+    use crate::transaction::transaction::Transaction;
+
     use super::*;
 
     #[test]
@@ -43,4 +38,3 @@ mod tests {
         assert_eq!(transaction.get_id(), &[]);
     }
 }
-

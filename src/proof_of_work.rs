@@ -1,7 +1,7 @@
 use data_encoding::HEXLOWER;
 use num_bigint::{BigInt, Sign};
 
-use crate::{block::Block, models::bincode_bigint::BincodeBigInt, util};
+use crate::{block::Block, common::bincode_bigint::BincodeBigInt, util};
 
 // Maximum number of nonce iterations to try
 const MAX_NONCE: i64 = i64::MAX;
@@ -72,7 +72,7 @@ impl ProofOfWork {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{transaction::Transaction, tx_input::TXInput, tx_output::TXOutput};
+    use crate::transaction::{transaction::Transaction, tx_input::TXInput, tx_output::TXOutput};
 
     fn create_test_transaction(id: Vec<u8>) -> Transaction {
         let tx_input = TXInput {
