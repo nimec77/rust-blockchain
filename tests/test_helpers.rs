@@ -77,15 +77,6 @@ pub fn create_default_test_block() -> Block {
     create_test_block("test_previous_hash".to_string(), 1)
 }
 
-/// Creates a test block with multiple transactions.
-pub fn create_test_block_with_transactions(
-    pre_hash: String,
-    transactions: &[Transaction],
-    height: usize,
-) -> Block {
-    Block::new_block_without_proof_of_work(pre_hash, transactions, height)
-}
-
 /// Creates a genesis block for testing.
 pub fn create_test_genesis_block() -> Block {
     let transaction = create_test_transaction(vec![0, 0, 0, 0]);
@@ -117,15 +108,6 @@ pub fn cleanup_test_db(test_path: &str) {
     if Path::new(test_path).exists() {
         let _ = fs::remove_dir_all(test_path);
     }
-}
-
-/// Creates a test database with automatic cleanup function.
-pub fn create_test_db_with_cleanup(test_name: &str) -> (Db, impl Fn()) {
-    let test_path = format!("test_db_{}_{}", test_name, std::process::id());
-    let db = sled::open(&test_path).unwrap();
-    let cleanup_path = test_path.clone();
-    let cleanup = move || cleanup_test_db(&cleanup_path);
-    (db, cleanup)
 }
 
 // =============================================================================
