@@ -1,5 +1,7 @@
 use rust_blockchain::{Transaction, TXInput, TXOutput};
 
+use crate::test_helpers::{create_output_with_key_hash, create_output_with_value, create_sample_output};
+
 // Transaction tests
 #[test]
 fn test_transaction_get_id() {
@@ -159,28 +161,6 @@ fn test_txinput_serialization() {
     assert_eq!(tx_input.vout, decoded.vout);
     assert_eq!(tx_input.signature, decoded.signature);
     assert_eq!(tx_input.pub_key, decoded.pub_key);
-}
-
-// TXOutput tests
-fn create_sample_output() -> TXOutput {
-    TXOutput {
-        value: 100,
-        pub_key_hash: vec![1, 2, 3, 4, 5],
-    }
-}
-
-fn create_output_with_value(value: i32) -> TXOutput {
-    TXOutput {
-        value,
-        pub_key_hash: vec![10, 20, 30],
-    }
-}
-
-fn create_output_with_key_hash(key_hash: Vec<u8>) -> TXOutput {
-    TXOutput {
-        value: 50,
-        pub_key_hash: key_hash,
-    }
 }
 
 #[test]

@@ -1,5 +1,6 @@
 mod block;
 mod blockchain;
-mod transaction;
+mod common;
 mod proof_of_work;
-mod common; 
+mod test_helpers;
+mod transaction; 

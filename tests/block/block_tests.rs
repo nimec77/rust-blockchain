@@ -1,23 +1,5 @@
 use rust_blockchain::{Block, TXInput, TXOutput, Transaction, util};
-
-fn create_test_transaction(id: Vec<u8>) -> Transaction {
-    let tx_input = TXInput {
-        txid: vec![1, 2, 3],
-        vout: 0,
-        signature: vec![4, 5, 6],
-        pub_key: vec![7, 8, 9],
-    };
-    let tx_output = TXOutput {
-        value: 100,
-        pub_key_hash: vec![10, 11, 12],
-    };
-
-    Transaction {
-        id,
-        vin: vec![tx_input],
-        vout: vec![tx_output],
-    }
-}
+use crate::test_helpers::*;
 
 #[ignore]
 #[test]

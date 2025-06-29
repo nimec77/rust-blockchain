@@ -1,40 +1,13 @@
-use rust_blockchain::{ProofOfWork, Block, Transaction, TXInput, TXOutput};
+use rust_blockchain::{ProofOfWork, Block};
 use num_bigint::BigInt;
+use crate::test_helpers::*;
 
 const TARGET_BITS: usize = 24;
 const MAX_NONCE: i64 = i64::MAX;
 
-fn create_test_transaction(id: Vec<u8>) -> Transaction {
-    let tx_input = TXInput {
-        txid: vec![1, 2, 3],
-        vout: 0,
-        signature: vec![4, 5, 6],
-        pub_key: vec![7, 8, 9],
-    };
-    let tx_output = TXOutput {
-        value: 100,
-        pub_key_hash: vec![10, 11, 12],
-    };
-
-    Transaction {
-        id,
-        vin: vec![tx_input],
-        vout: vec![tx_output],
-    }
-}
-
-fn create_test_block() -> Block {
-    let transaction = create_test_transaction(vec![1, 2, 3, 4]);
-    let transactions = vec![transaction];
-    let pre_block_hash = "test_previous_hash".to_string();
-    let height = 1;
-
-    Block::new_block_without_proof_of_work(pre_block_hash, &transactions, height)
-}
-
 #[test]
 fn test_new_proof_of_work() {
-    let block = create_test_block();
+    let block = create_default_test_block();
     let pow = ProofOfWork::new_proof_of_work(block.clone());
 
     // Verify that the target is calculated correctly
@@ -49,7 +22,7 @@ fn test_new_proof_of_work() {
 
 #[test]
 fn test_new_proof_of_work_target_calculation() {
-    let block = create_test_block();
+    let block = create_default_test_block();
     let pow = ProofOfWork::new_proof_of_work(block);
 
     // Test that target is a valid BigInt and has the expected magnitude
@@ -63,7 +36,7 @@ fn test_new_proof_of_work_target_calculation() {
 
 #[test]
 fn test_prepare_data() {
-    let block = create_test_block();
+    let block = create_default_test_block();
     let pow = ProofOfWork::new_proof_of_work(block.clone());
     let nonce = 12345;
 
@@ -82,7 +55,7 @@ fn test_prepare_data() {
 
 #[test]
 fn test_prepare_data_different_nonces() {
-    let block = create_test_block();
+    let block = create_default_test_block();
     let pow = ProofOfWork::new_proof_of_work(block);
 
     let data1 = pow.prepare_data(100);
@@ -100,7 +73,7 @@ fn test_prepare_data_different_nonces() {
 
 #[test]
 fn test_prepare_data_deterministic() {
-    let block = create_test_block();
+    let block = create_default_test_block();
     let pow = ProofOfWork::new_proof_of_work(block);
     let nonce = 42;
 
@@ -113,7 +86,7 @@ fn test_prepare_data_deterministic() {
 
 #[test]
 fn test_validate_with_default_nonce() {
-    let block = create_test_block();
+    let block = create_default_test_block();
     let pow = ProofOfWork::new_proof_of_work(block);
 
     // With TARGET_BITS = 24, it's extremely unlikely that the default nonce (0) will produce a valid hash
@@ -126,7 +99,7 @@ fn test_validate_with_default_nonce() {
 
 #[test]
 fn test_validate_deterministic() {
-    let block = create_test_block();
+    let block = create_default_test_block();
     let pow = ProofOfWork::new_proof_of_work(block);
 
     let result1 = pow.validate();
@@ -162,7 +135,7 @@ fn test_validate_different_blocks() {
 #[ignore] // This test can take a very long time to complete
 #[test]
 fn test_run_mining_process() {
-    let block = create_test_block();
+    let block = create_default_test_block();
     let pow = ProofOfWork::new_proof_of_work(block.clone());
 
     let (nonce, hash) = pow.run();
@@ -181,7 +154,7 @@ fn test_run_mining_process() {
 
 #[test]
 fn test_proof_of_work_clone() {
-    let block = create_test_block();
+    let block = create_default_test_block();
     let pow = ProofOfWork::new_proof_of_work(block);
 
     let cloned_pow = pow.clone();
@@ -197,7 +170,7 @@ fn test_proof_of_work_clone() {
 
 #[test]
 fn test_proof_of_work_serialization() {
-    let block = create_test_block();
+    let block = create_default_test_block();
     let pow = ProofOfWork::new_proof_of_work(block);
 
     // Test that the contained block can be serialized
@@ -225,7 +198,7 @@ fn test_max_nonce_constant() {
     assert_eq!(MAX_NONCE, i64::MAX);
     
     // Test that nonce range is reasonable
-    let block = create_test_block();
+    let block = create_default_test_block();
     let pow = ProofOfWork::new_proof_of_work(block);
     
     // Prepare data with max nonce should not panic

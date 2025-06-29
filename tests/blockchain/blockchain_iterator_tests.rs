@@ -1,43 +1,11 @@
-use rust_blockchain::{Block, BlockchainIterator, TXInput, TXOutput, Transaction};
-use sled::Db;
-use tempfile::TempDir;
+use rust_blockchain::BlockchainIterator;
+use crate::test_helpers::*;
 
 const BLOCKS_TREE: &str = "blocks";
 
-fn create_test_transaction(id: Vec<u8>) -> Transaction {
-    let tx_input = TXInput {
-        txid: vec![1, 2, 3],
-        vout: 0,
-        signature: vec![4, 5, 6],
-        pub_key: vec![7, 8, 9],
-    };
-    let tx_output = TXOutput {
-        value: 100,
-        pub_key_hash: vec![10, 11, 12],
-    };
-
-    Transaction {
-        id,
-        vin: vec![tx_input],
-        vout: vec![tx_output],
-    }
-}
-
-fn create_test_block(pre_hash: String, height: usize) -> Block {
-    let transaction = create_test_transaction(vec![1, 2, 3, 4]);
-    let transactions = vec![transaction];
-    Block::new_block_without_proof_of_work(pre_hash, &transactions, height)
-}
-
-fn setup_test_db() -> (Db, TempDir) {
-    let temp_dir = TempDir::new().expect("Failed to create temp directory");
-    let db = sled::open(temp_dir.path()).expect("Failed to open database");
-    (db, temp_dir)
-}
-
 #[test]
 fn test_new() {
-    let (db, _temp_dir) = setup_test_db();
+    let (db, _temp_dir) = setup_temp_test_db();
     let current_hash = "test_hash".to_string();
 
     let iterator = BlockchainIterator::new(db.clone(), current_hash.clone());
@@ -49,7 +17,7 @@ fn test_new() {
 
 #[test]
 fn test_next_with_valid_block() {
-    let (db, _temp_dir) = setup_test_db();
+    let (db, _temp_dir) = setup_temp_test_db();
     let blocks_tree = db.open_tree(BLOCKS_TREE).unwrap();
 
     // Create a test block
@@ -79,7 +47,7 @@ fn test_next_with_valid_block() {
 
 #[test]
 fn test_next_with_nonexistent_block() {
-    let (db, _temp_dir) = setup_test_db();
+    let (db, _temp_dir) = setup_temp_test_db();
     let mut iterator = BlockchainIterator::new(db, "nonexistent_hash".to_string());
 
     // This should return None since the block doesn't exist
@@ -89,7 +57,7 @@ fn test_next_with_nonexistent_block() {
 
 #[test]
 fn test_next_iterating_multiple_blocks() {
-    let (db, _temp_dir) = setup_test_db();
+    let (db, _temp_dir) = setup_temp_test_db();
     let blocks_tree = db.open_tree(BLOCKS_TREE).unwrap();
 
     // Create a chain of blocks: genesis -> block1 -> block2
@@ -143,7 +111,7 @@ fn test_next_iterating_multiple_blocks() {
 
 #[test]
 fn test_next_with_empty_database() {
-    let (db, _temp_dir) = setup_test_db();
+    let (db, _temp_dir) = setup_temp_test_db();
     let mut iterator = BlockchainIterator::new(db, "any_hash".to_string());
 
     // Should return None for empty database
@@ -153,7 +121,7 @@ fn test_next_with_empty_database() {
 
 #[test]
 fn test_iterator_state_changes_after_next() {
-    let (db, _temp_dir) = setup_test_db();
+    let (db, _temp_dir) = setup_temp_test_db();
     let blocks_tree = db.open_tree(BLOCKS_TREE).unwrap();
 
     // Create a test block
@@ -177,7 +145,7 @@ fn test_iterator_state_changes_after_next() {
 
 #[test]
 fn test_iterator_with_corrupted_data() {
-    let (db, _temp_dir) = setup_test_db();
+    let (db, _temp_dir) = setup_temp_test_db();
     let blocks_tree = db.open_tree(BLOCKS_TREE).unwrap();
 
     // Insert corrupted data that can't be deserialized as a Block
@@ -196,7 +164,7 @@ fn test_iterator_with_corrupted_data() {
 
 #[test]
 fn test_iterator_with_different_hash_formats() {
-    let (db, _temp_dir) = setup_test_db();
+    let (db, _temp_dir) = setup_temp_test_db();
     let blocks_tree = db.open_tree(BLOCKS_TREE).unwrap();
 
     // Test with different hash formats
@@ -224,7 +192,7 @@ fn test_iterator_with_different_hash_formats() {
 
 #[test]
 fn test_iterator_database_operations() {
-    let (db, _temp_dir) = setup_test_db();
+    let (db, _temp_dir) = setup_temp_test_db();
     let blocks_tree = db.open_tree(BLOCKS_TREE).unwrap();
 
     // Create and store a block
@@ -251,7 +219,7 @@ fn test_iterator_database_operations() {
 
 #[test]
 fn test_iterator_with_single_block_chain() {
-    let (db, _temp_dir) = setup_test_db();
+    let (db, _temp_dir) = setup_temp_test_db();
     let blocks_tree = db.open_tree(BLOCKS_TREE).unwrap();
 
     // Create a single genesis block

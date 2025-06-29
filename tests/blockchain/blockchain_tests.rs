@@ -1,18 +1,5 @@
 use rust_blockchain::Blockchain;
-use sled::Db;
-use std::fs;
-use std::path::Path;
-
-fn create_test_db(test_name: &str) -> Db {
-    let test_path = format!("test_db_{}_{}", test_name, std::process::id());
-    sled::open(&test_path).unwrap()
-}
-
-fn cleanup_test_db(test_path: &str) {
-    if Path::new(test_path).exists() {
-        let _ = fs::remove_dir_all(test_path);
-    }
-}
+use crate::test_helpers::*;
 
 #[test]
 fn test_new_with_tip() {
