@@ -1,4 +1,4 @@
-use crate::transaction::{tx_input::TXInput, tx_output::TXOutput};
+use crate::transaction::{TXInput, TXOutput};
 
 #[derive(Clone, bincode::Encode, bincode::Decode)]
 pub struct Transaction {

@@ -1,7 +1,7 @@
 use bincode::config::standard;
 use sled::IVec;
 
-use crate::{block::data::block::Block, proof_of_work::data::proof_of_work::ProofOfWork, transaction::transaction::Transaction, util};
+use crate::{block::Block, proof_of_work::ProofOfWork, transaction::Transaction, util};
 
 impl Block {
     pub fn new_block(pre_block_hash: String, transactions: &[Transaction], height: usize) -> Block {
@@ -99,7 +99,7 @@ impl From<Block> for IVec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transaction::{tx_input::TXInput, tx_output::TXOutput};
+    use crate::transaction::{TXInput, TXOutput};
 
     fn create_test_transaction(id: Vec<u8>) -> Transaction {
         let tx_input = TXInput {

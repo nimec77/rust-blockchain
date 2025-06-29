@@ -1,4 +1,4 @@
-use crate::transaction::transaction::Transaction;
+use crate::transaction::Transaction;
 
 impl Transaction {
     pub fn get_id(&self) -> &[u8] {
@@ -8,7 +8,7 @@ impl Transaction {
 
 #[cfg(test)]
 mod tests {
-    use crate::transaction::transaction::Transaction;
+    use crate::transaction::Transaction;
 
     use super::*;
 

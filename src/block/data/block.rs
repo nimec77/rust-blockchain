@@ -1,4 +1,4 @@
-use crate::transaction::transaction::Transaction;
+use crate::transaction::Transaction;
 
 
 #[derive(Clone, bincode::Encode, bincode::Decode)]

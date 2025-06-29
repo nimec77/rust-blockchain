@@ -2,9 +2,9 @@ use data_encoding::HEXLOWER;
 use num_bigint::{BigInt, Sign};
 
 use crate::{
-    block::data::block::Block,
-    common::bincode_bigint::data::bincode_bigint::BincodeBigInt,
-    proof_of_work::data::proof_of_work::{MAX_NONCE, ProofOfWork, TARGET_BITS},
+    block::Block,
+    common::BincodeBigInt,
+    proof_of_work::{MAX_NONCE, ProofOfWork, TARGET_BITS},
     util,
 };
 
@@ -65,7 +65,7 @@ impl ProofOfWork {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transaction::{transaction::Transaction, tx_input::TXInput, tx_output::TXOutput};
+    use crate::transaction::{Transaction, TXInput, TXOutput};
 
     fn create_test_transaction(id: Vec<u8>) -> Transaction {
         let tx_input = TXInput {

@@ -1,4 +1,4 @@
-use crate::{block::data::block::Block, common::bincode_bigint::data::bincode_bigint::BincodeBigInt};
+use crate::{block::Block, common::BincodeBigInt};
 
 // Maximum number of nonce iterations to try
 pub const MAX_NONCE: i64 = i64::MAX;

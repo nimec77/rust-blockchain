@@ -1,4 +1,4 @@
-use crate::transaction::tx_input::TXInput;
+use crate::transaction::TXInput;
 
 impl TXInput {
     pub fn new(txid: &[u8], vout: usize) -> TXInput {

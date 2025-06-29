@@ -1,4 +1,4 @@
-use crate::transaction::tx_output::TXOutput;
+use crate::transaction::TXOutput;
 
 impl TXOutput {
    

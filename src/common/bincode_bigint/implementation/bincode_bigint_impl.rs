@@ -1,7 +1,7 @@
 use bincode::{Decode, Encode};
 use num_bigint::BigInt;
 
-use crate::common::bincode_bigint::data::bincode_bigint::BincodeBigInt;
+use crate::common::BincodeBigInt;
 
 impl BincodeBigInt {
     /// Create a new BincodeBigInt by taking ownership of a BigInt (no clone needed)

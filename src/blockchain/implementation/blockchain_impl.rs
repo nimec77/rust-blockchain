@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 use sled::Db;
 
 use crate::{
-    blockchain::data::blockchain::{BLOCKS_TREE, Blockchain, TIP_BLOCK_HASH_KEY},
+    blockchain::{BLOCKS_TREE, Blockchain, TIP_BLOCK_HASH_KEY},
     util,
 };
 

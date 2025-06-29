@@ -1,7 +1,5 @@
 mod data;
-
-pub use data::blockchain::*;
-
 mod implementation;
 
-pub use implementation::blockchain_impl::*;
+// Re-export the main struct and constants
+pub use data::blockchain::{Blockchain, TIP_BLOCK_HASH_KEY, BLOCKS_TREE};
