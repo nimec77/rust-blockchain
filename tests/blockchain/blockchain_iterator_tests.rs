@@ -200,7 +200,7 @@ fn test_iterator_with_different_hash_formats() {
     let blocks_tree = db.open_tree(BLOCKS_TREE).unwrap();
 
     // Test with different hash formats
-    let hash_formats = vec![
+    let hash_formats = [
         "short",
         "0123456789abcdef",
         "very_long_hash_string_with_underscores_and_numbers_12345",
@@ -231,7 +231,9 @@ fn test_iterator_database_operations() {
     let mut block = create_test_block("test_prev".to_string(), 5);
     block.hash = "test_current".to_string();
 
-    blocks_tree.insert("test_current", block.serialize()).unwrap();
+    blocks_tree
+        .insert("test_current", block.serialize())
+        .unwrap();
 
     // Verify we can read the block back through the iterator
     let mut iterator = BlockchainIterator::new(db, "test_current".to_string());
@@ -256,7 +258,9 @@ fn test_iterator_with_single_block_chain() {
     let mut genesis_block = create_test_block("".to_string(), 0);
     genesis_block.hash = "genesis_only".to_string();
 
-    blocks_tree.insert("genesis_only", genesis_block.serialize()).unwrap();
+    blocks_tree
+        .insert("genesis_only", genesis_block.serialize())
+        .unwrap();
 
     let mut iterator = BlockchainIterator::new(db, "genesis_only".to_string());
 
@@ -271,4 +275,4 @@ fn test_iterator_with_single_block_chain() {
     // Second call should return None (no more blocks)
     let result2 = iterator.next();
     assert!(result2.is_none());
-} 
+}

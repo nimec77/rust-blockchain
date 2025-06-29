@@ -175,7 +175,7 @@ fn test_powers_of_two() {
         let encoded = encode_to_vec(&wrapper, config).unwrap();
         let (decoded, _): (BincodeBigInt, usize) = decode_from_slice(&encoded, config).unwrap();
 
-        assert_eq!(wrapper.as_bigint(), decoded.as_bigint(), "Failed for 2^{}", power);
+        assert_eq!(wrapper.as_bigint(), decoded.as_bigint(), "Failed for 2^{power}");
     }
 }
 
@@ -198,7 +198,7 @@ fn test_debug_display_traits() {
     let wrapper = BincodeBigInt::new(big_int);
 
     // These should not panic
-    let _debug_str = format!("{:?}", wrapper);
+    let _debug_str = format!("{wrapper:?}");
     // Note: Display trait might not be implemented, so we won't test it
 }
 
@@ -281,7 +281,7 @@ fn test_max_values() {
         let encoded = encode_to_vec(&wrapper, config).unwrap();
         let (decoded, _): (BincodeBigInt, usize) = decode_from_slice(&encoded, config).unwrap();
         
-        assert_eq!(wrapper.as_bigint(), decoded.as_bigint(), "Failed for value: {}", big_int);
+        assert_eq!(wrapper.as_bigint(), decoded.as_bigint(), "Failed for value: {big_int}");
     }
 }
 
@@ -302,6 +302,6 @@ fn test_min_values() {
         let encoded = encode_to_vec(&wrapper, config).unwrap();
         let (decoded, _): (BincodeBigInt, usize) = decode_from_slice(&encoded, config).unwrap();
         
-        assert_eq!(wrapper.as_bigint(), decoded.as_bigint(), "Failed for value: {}", big_int);
+        assert_eq!(wrapper.as_bigint(), decoded.as_bigint(), "Failed for value: {big_int}");
     }
 } 

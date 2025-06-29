@@ -213,8 +213,6 @@ fn test_proof_of_work_serialization() {
 fn test_target_bits_constant() {
     // Test that TARGET_BITS constant is reasonable
     assert_eq!(TARGET_BITS, 24);
-    assert!(TARGET_BITS > 0);
-    assert!(TARGET_BITS < 256); // Must be less than SHA256 bit length
 
     // Test that target calculation works with the constant
     let target = BigInt::from(1) << (256 - TARGET_BITS);
@@ -225,7 +223,6 @@ fn test_target_bits_constant() {
 fn test_max_nonce_constant() {
     // Test MAX_NONCE constant
     assert_eq!(MAX_NONCE, i64::MAX);
-    assert!(MAX_NONCE > 0);
     
     // Test that nonce range is reasonable
     let block = create_test_block();

@@ -1,5 +1,4 @@
 use rust_blockchain::util::{current_timestamp, sha256_digest, base58_encode, base58_decode, current_dir};
-use std::path::PathBuf;
 
 #[test]
 fn test_current_timestamp() {
@@ -323,13 +322,13 @@ fn test_base58_decode_invalid_character() {
 
 #[test]
 fn test_base58_decode_invalid_character_o() {
-    let result = base58_decode("o"); // lowercase 'o' is invalid
+    let result = base58_decode("O"); // uppercase 'O' is invalid
     assert_eq!(result, vec![]);
 }
 
 #[test]
 fn test_base58_decode_invalid_character_i() {
-    let result = base58_decode("i"); // lowercase 'i' is invalid
+    let result = base58_decode("I"); // uppercase 'I' is invalid
     assert_eq!(result, vec![]);
 }
 

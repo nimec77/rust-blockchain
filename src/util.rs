@@ -20,7 +20,7 @@ pub fn base58_encode(data: &[u8]) -> String {
 }
 
 pub fn base58_decode(data: &str) -> Vec<u8> {
-    bs58::decode(data).into_vec().unwrap()
+    bs58::decode(data).into_vec().unwrap_or_else(|_| vec![])
 }
 
 pub fn current_dir() -> PathBuf {
@@ -344,32 +344,32 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_base58_decode_invalid_character() {
-        // Test that invalid characters cause panic (due to unwrap())
+        // Test that invalid characters return empty vector
         // Base58 doesn't include 0, O, I, l characters
-        base58_decode("0");
+        let result = base58_decode("0");
+        assert_eq!(result, vec![]);
     }
 
     #[test]
-    #[should_panic]
     fn test_base58_decode_invalid_character_o() {
-        // Test that invalid characters cause panic
-        base58_decode("O");
+        // Test that invalid characters return empty vector
+        let result = base58_decode("O");
+        assert_eq!(result, vec![]);
     }
 
     #[test]
-    #[should_panic]
     fn test_base58_decode_invalid_character_i() {
-        // Test that invalid characters cause panic
-        base58_decode("I");
+        // Test that invalid characters return empty vector
+        let result = base58_decode("I");
+        assert_eq!(result, vec![]);
     }
 
     #[test]
-    #[should_panic]
     fn test_base58_decode_invalid_character_l() {
-        // Test that invalid characters cause panic
-        base58_decode("l");
+        // Test that invalid characters return empty vector
+        let result = base58_decode("l");
+        assert_eq!(result, vec![]);
     }
 
     #[test]

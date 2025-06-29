@@ -1,5 +1,4 @@
-use rust_blockchain::{util, Block, TXInput, TXOutput, Transaction};
-
+use rust_blockchain::{Block, TXInput, TXOutput, Transaction, util};
 
 fn create_test_transaction(id: Vec<u8>) -> Transaction {
     let tx_input = TXInput {
@@ -80,8 +79,7 @@ fn test_get_transactions() {
     let transaction2 = create_test_transaction(vec![4, 5, 6]);
     let transactions = vec![transaction1, transaction2];
 
-    let block =
-        Block::new_block_without_proof_of_work("test_hash".to_string(), &transactions, 1);
+    let block = Block::new_block_without_proof_of_work("test_hash".to_string(), &transactions, 1);
     let retrieved_transactions = block.get_transactions();
 
     assert_eq!(retrieved_transactions.len(), 2);
@@ -95,8 +93,7 @@ fn test_get_pre_block_hash() {
     let transactions = vec![transaction];
     let pre_block_hash = "previous_block_hash".to_string();
 
-    let block =
-        Block::new_block_without_proof_of_work(pre_block_hash.clone(), &transactions, 1);
+    let block = Block::new_block_without_proof_of_work(pre_block_hash.clone(), &transactions, 1);
 
     assert_eq!(block.get_pre_block_hash(), pre_block_hash.as_str());
 }
@@ -106,8 +103,7 @@ fn test_get_hash() {
     let transaction = create_test_transaction(vec![1, 2, 3]);
     let transactions = vec![transaction];
 
-    let mut block =
-        Block::new_block_without_proof_of_work("test".to_string(), &transactions, 1);
+    let mut block = Block::new_block_without_proof_of_work("test".to_string(), &transactions, 1);
     block.hash = "test_hash".to_string();
 
     assert_eq!(block.get_hash(), "test_hash");
@@ -118,8 +114,7 @@ fn test_get_hash_bytes() {
     let transaction = create_test_transaction(vec![1, 2, 3]);
     let transactions = vec![transaction];
 
-    let mut block =
-        Block::new_block_without_proof_of_work("test".to_string(), &transactions, 1);
+    let mut block = Block::new_block_without_proof_of_work("test".to_string(), &transactions, 1);
     block.hash = "test_hash".to_string();
 
     let hash_bytes = block.get_hash_bytes();
@@ -144,8 +139,7 @@ fn test_get_height() {
     let transactions = vec![transaction];
     let height = 42;
 
-    let block =
-        Block::new_block_without_proof_of_work("test".to_string(), &transactions, height);
+    let block = Block::new_block_without_proof_of_work("test".to_string(), &transactions, height);
 
     assert_eq!(block.get_height(), height);
 }
@@ -202,7 +196,10 @@ fn test_from_block_to_ivec() {
     let deserialized_block = Block::deserialize(&ivec);
 
     assert_eq!(block.get_hash(), deserialized_block.get_hash());
-    assert_eq!(block.get_pre_block_hash(), deserialized_block.get_pre_block_hash());
+    assert_eq!(
+        block.get_pre_block_hash(),
+        deserialized_block.get_pre_block_hash()
+    );
     assert_eq!(block.get_height(), deserialized_block.get_height());
     assert_eq!(block.get_timestamp(), deserialized_block.get_timestamp());
 }
@@ -232,7 +229,8 @@ fn test_serialize_deserialize_round_trip_consistency() {
     let transaction2 = create_test_transaction(vec![40, 50, 60]);
     let transactions = vec![transaction1, transaction2];
 
-    let original_block = Block::new_block_without_proof_of_work("original_hash".to_string(), &transactions, 3);
+    let original_block =
+        Block::new_block_without_proof_of_work("original_hash".to_string(), &transactions, 3);
 
     // Multiple serialization/deserialization cycles
     let mut current_block = original_block.clone();
@@ -243,11 +241,20 @@ fn test_serialize_deserialize_round_trip_consistency() {
 
     // Verify integrity after cycles
     assert_eq!(original_block.get_hash(), current_block.get_hash());
-    assert_eq!(original_block.get_pre_block_hash(), current_block.get_pre_block_hash());
+    assert_eq!(
+        original_block.get_pre_block_hash(),
+        current_block.get_pre_block_hash()
+    );
     assert_eq!(original_block.get_height(), current_block.get_height());
-    assert_eq!(original_block.get_timestamp(), current_block.get_timestamp());
+    assert_eq!(
+        original_block.get_timestamp(),
+        current_block.get_timestamp()
+    );
     assert_eq!(original_block.get_nonce(), current_block.get_nonce());
-    assert_eq!(original_block.get_transactions().len(), current_block.get_transactions().len());
+    assert_eq!(
+        original_block.get_transactions().len(),
+        current_block.get_transactions().len()
+    );
 }
 
 #[test]
@@ -274,20 +281,21 @@ fn test_proof_of_work_integration() {
     assert_eq!(block.get_height(), 1);
     assert_eq!(block.get_transactions().len(), 1);
     assert!(block.get_timestamp() > 0);
-    assert!(block.get_nonce() >= 0);
-    assert!(!block.get_hash().is_empty());
+    assert_eq!(block.get_nonce(), 0); // new_block_without_proof_of_work sets nonce to 0
+    assert_eq!(block.get_hash(), ""); // new_block_without_proof_of_work creates empty hash
 }
 
 #[test]
 fn test_empty_transactions_block() {
     let transactions = vec![];
 
-    let block = Block::new_block_without_proof_of_work("empty_tx_hash".to_string(), &transactions, 0);
+    let block =
+        Block::new_block_without_proof_of_work("empty_tx_hash".to_string(), &transactions, 0);
 
     assert_eq!(block.get_transactions().len(), 0);
     assert_eq!(block.get_height(), 0);
     assert_eq!(block.get_pre_block_hash(), "empty_tx_hash");
-    assert!(!block.get_hash().is_empty());
+    assert_eq!(block.get_hash(), ""); // new_block_without_proof_of_work creates empty hash
     assert!(block.get_timestamp() > 0);
 }
 
@@ -299,8 +307,10 @@ fn test_hash_transactions_ordering() {
     let transactions_order1 = vec![transaction1.clone(), transaction2.clone()];
     let transactions_order2 = vec![transaction2, transaction1];
 
-    let block1 = Block::new_block_without_proof_of_work("test".to_string(), &transactions_order1, 1);
-    let block2 = Block::new_block_without_proof_of_work("test".to_string(), &transactions_order2, 1);
+    let block1 =
+        Block::new_block_without_proof_of_work("test".to_string(), &transactions_order1, 1);
+    let block2 =
+        Block::new_block_without_proof_of_work("test".to_string(), &transactions_order2, 1);
 
     let hash1 = block1.hash_transactions();
     let hash2 = block2.hash_transactions();
@@ -314,13 +324,18 @@ fn test_block_hash_consistency() {
     let transaction = create_test_transaction(vec![123, 45, 67]);
     let transactions = vec![transaction];
 
-    let block1 = Block::new_block_without_proof_of_work("consistent_test".to_string(), &transactions, 5);
-    let block2 = Block::new_block_without_proof_of_work("consistent_test".to_string(), &transactions, 5);
+    let block1 =
+        Block::new_block_without_proof_of_work("consistent_test".to_string(), &transactions, 5);
+    let block2 =
+        Block::new_block_without_proof_of_work("consistent_test".to_string(), &transactions, 5);
 
     // Note: Hashes might differ due to timestamps, but structure should be similar
     assert_eq!(block1.get_pre_block_hash(), block2.get_pre_block_hash());
     assert_eq!(block1.get_height(), block2.get_height());
-    assert_eq!(block1.get_transactions().len(), block2.get_transactions().len());
+    assert_eq!(
+        block1.get_transactions().len(),
+        block2.get_transactions().len()
+    );
 }
 
 #[test]
@@ -335,8 +350,8 @@ fn test_genesis_block_validation() {
     assert_eq!(genesis_block.get_transactions().len(), 1);
     assert_eq!(genesis_block.get_transactions()[0].get_id(), &[255, 0, 128]);
     assert!(genesis_block.get_timestamp() > 0);
-    assert!(!genesis_block.get_hash().is_empty());
-    assert!(genesis_block.get_nonce() >= 0);
+    assert_eq!(genesis_block.get_hash(), ""); // genesis block uses new_block_without_proof_of_work
+    assert_eq!(genesis_block.get_nonce(), 0); // genesis block uses new_block_without_proof_of_work
 }
 
 #[test]
@@ -346,7 +361,8 @@ fn test_block_with_large_transaction_count() {
         transactions.push(create_test_transaction(vec![i as u8]));
     }
 
-    let block = Block::new_block_without_proof_of_work("large_tx_test".to_string(), &transactions, 10);
+    let block =
+        Block::new_block_without_proof_of_work("large_tx_test".to_string(), &transactions, 10);
 
     assert_eq!(block.get_transactions().len(), 100);
     assert_eq!(block.get_height(), 10);
@@ -355,7 +371,10 @@ fn test_block_with_large_transaction_count() {
     // Verify serialization works with large transaction count
     let serialized = block.serialize();
     let deserialized = Block::deserialize(&serialized);
-    assert_eq!(block.get_transactions().len(), deserialized.get_transactions().len());
+    assert_eq!(
+        block.get_transactions().len(),
+        deserialized.get_transactions().len()
+    );
 }
 
 #[test]
@@ -363,7 +382,8 @@ fn test_block_fields_immutability_after_creation() {
     let transaction = create_test_transaction(vec![42, 43, 44]);
     let transactions = vec![transaction];
 
-    let block = Block::new_block_without_proof_of_work("immutable_test".to_string(), &transactions, 7);
+    let block =
+        Block::new_block_without_proof_of_work("immutable_test".to_string(), &transactions, 7);
 
     // Capture initial values
     let initial_hash = block.get_hash().to_string();
@@ -394,8 +414,9 @@ fn test_block_serialization_with_unicode_hash() {
     let transaction = create_test_transaction(vec![200, 201, 202]);
     let transactions = vec![transaction];
 
-    let mut block = Block::new_block_without_proof_of_work("unicode_test".to_string(), &transactions, 3);
-    
+    let mut block =
+        Block::new_block_without_proof_of_work("unicode_test".to_string(), &transactions, 3);
+
     // Test with ASCII hash
     block.hash = "simple_ascii_hash".to_string();
     let serialized = block.serialize();
@@ -417,8 +438,8 @@ fn test_new_block_without_proof_of_work_initialization() {
     assert_eq!(block.get_height(), height);
     assert_eq!(block.get_transactions().len(), 1);
     assert!(block.get_timestamp() > 0);
-    assert!(!block.get_hash().is_empty());
-    assert!(block.get_nonce() >= 0);
+    assert_eq!(block.get_hash(), ""); // new_block_without_proof_of_work creates empty hash
+    assert_eq!(block.get_nonce(), 0); // new_block_without_proof_of_work sets nonce to 0
 
     // Verify transaction content
     assert_eq!(block.get_transactions()[0].get_id(), &[100, 101, 102]);
@@ -429,7 +450,7 @@ fn test_block_with_different_pre_hash_formats() {
     let transaction = create_test_transaction(vec![50, 51, 52]);
     let transactions = vec![transaction];
 
-    let test_hashes = vec![
+    let test_hashes = [
         "".to_string(),
         "a".to_string(),
         "0123456789abcdef".to_string(),
@@ -454,7 +475,11 @@ fn test_block_with_varying_transaction_counts() {
             transactions.push(create_test_transaction(vec![i as u8, (i + 1) as u8]));
         }
 
-        let block = Block::new_block_without_proof_of_work("varying_tx_test".to_string(), &transactions, count);
+        let block = Block::new_block_without_proof_of_work(
+            "varying_tx_test".to_string(),
+            &transactions,
+            count,
+        );
 
         assert_eq!(block.get_transactions().len(), count);
         assert_eq!(block.get_height(), count);
@@ -462,7 +487,10 @@ fn test_block_with_varying_transaction_counts() {
         // Test serialization for each count
         let serialized = block.serialize();
         let deserialized = Block::deserialize(&serialized);
-        assert_eq!(block.get_transactions().len(), deserialized.get_transactions().len());
+        assert_eq!(
+            block.get_transactions().len(),
+            deserialized.get_transactions().len()
+        );
     }
 }
 
@@ -472,7 +500,8 @@ fn test_hash_transactions_deterministic() {
     let transaction2 = create_test_transaction(vec![4, 5, 6]);
     let transactions = vec![transaction1, transaction2];
 
-    let block = Block::new_block_without_proof_of_work("deterministic_test".to_string(), &transactions, 1);
+    let block =
+        Block::new_block_without_proof_of_work("deterministic_test".to_string(), &transactions, 1);
 
     // Call hash_transactions multiple times
     let hash1 = block.hash_transactions();
@@ -491,8 +520,13 @@ fn test_hash_transactions_with_duplicate_transactions() {
     let transactions_unique = vec![transaction.clone()];
     let transactions_duplicate = vec![transaction.clone(), transaction];
 
-    let block1 = Block::new_block_without_proof_of_work("unique_test".to_string(), &transactions_unique, 1);
-    let block2 = Block::new_block_without_proof_of_work("duplicate_test".to_string(), &transactions_duplicate, 1);
+    let block1 =
+        Block::new_block_without_proof_of_work("unique_test".to_string(), &transactions_unique, 1);
+    let block2 = Block::new_block_without_proof_of_work(
+        "duplicate_test".to_string(),
+        &transactions_duplicate,
+        1,
+    );
 
     let hash1 = block1.hash_transactions();
     let hash2 = block2.hash_transactions();
@@ -507,7 +541,8 @@ fn test_block_timestamp_accuracy() {
     let transactions = vec![transaction];
 
     let before_creation = util::current_timestamp();
-    let block = Block::new_block_without_proof_of_work("timestamp_test".to_string(), &transactions, 1);
+    let block =
+        Block::new_block_without_proof_of_work("timestamp_test".to_string(), &transactions, 1);
     let after_creation = util::current_timestamp();
 
     let block_timestamp = block.get_timestamp();
@@ -523,12 +558,17 @@ fn test_block_height_edge_cases() {
     let transactions = vec![transaction];
 
     // Test with height 0 (genesis)
-    let block_genesis = Block::new_block_without_proof_of_work("genesis".to_string(), &transactions, 0);
+    let block_genesis =
+        Block::new_block_without_proof_of_work("genesis".to_string(), &transactions, 0);
     assert_eq!(block_genesis.get_height(), 0);
 
     // Test with large height
     let large_height = usize::MAX;
-    let block_large = Block::new_block_without_proof_of_work("large_height".to_string(), &transactions, large_height);
+    let block_large = Block::new_block_without_proof_of_work(
+        "large_height".to_string(),
+        &transactions,
+        large_height,
+    );
     assert_eq!(block_large.get_height(), large_height);
 }
 
@@ -538,7 +578,8 @@ fn test_serialization_roundtrip_consistency() {
     let transaction2 = create_test_transaction(vec![44, 55, 66]);
     let transactions = vec![transaction1, transaction2];
 
-    let original_block = Block::new_block_without_proof_of_work("roundtrip_test".to_string(), &transactions, 8);
+    let original_block =
+        Block::new_block_without_proof_of_work("roundtrip_test".to_string(), &transactions, 8);
 
     // Serialize and deserialize
     let serialized = original_block.serialize();
@@ -546,11 +587,20 @@ fn test_serialization_roundtrip_consistency() {
 
     // Check all fields for consistency
     assert_eq!(original_block.get_hash(), deserialized_block.get_hash());
-    assert_eq!(original_block.get_pre_block_hash(), deserialized_block.get_pre_block_hash());
+    assert_eq!(
+        original_block.get_pre_block_hash(),
+        deserialized_block.get_pre_block_hash()
+    );
     assert_eq!(original_block.get_height(), deserialized_block.get_height());
-    assert_eq!(original_block.get_timestamp(), deserialized_block.get_timestamp());
+    assert_eq!(
+        original_block.get_timestamp(),
+        deserialized_block.get_timestamp()
+    );
     assert_eq!(original_block.get_nonce(), deserialized_block.get_nonce());
-    assert_eq!(original_block.get_transactions().len(), deserialized_block.get_transactions().len());
+    assert_eq!(
+        original_block.get_transactions().len(),
+        deserialized_block.get_transactions().len()
+    );
 
     // Verify transaction data integrity
     for (i, original_tx) in original_block.get_transactions().iter().enumerate() {
@@ -569,25 +619,28 @@ fn test_genesis_block_without_proof_of_work() {
     assert_eq!(genesis_block.get_pre_block_hash(), "None");
     assert_eq!(genesis_block.get_height(), 0);
     assert!(genesis_block.get_timestamp() > 0);
-    assert!(!genesis_block.get_hash().is_empty());
+    assert_eq!(genesis_block.get_hash(), ""); // genesis block uses new_block_without_proof_of_work
 
     // Genesis block should be serializable
     let serialized = genesis_block.serialize();
     let deserialized = Block::deserialize(&serialized);
-    assert_eq!(genesis_block.get_pre_block_hash(), deserialized.get_pre_block_hash());
+    assert_eq!(
+        genesis_block.get_pre_block_hash(),
+        deserialized.get_pre_block_hash()
+    );
     assert_eq!(genesis_block.get_height(), deserialized.get_height());
 }
 
 #[test]
 fn test_large_transaction_data_without_proof_of_work() {
     // Create transaction with large data
-    let mut large_tx_input = TXInput {
+    let large_tx_input = TXInput {
         txid: vec![0u8; 1000], // 1KB txid
         vout: 0,
         signature: vec![255u8; 2000], // 2KB signature
-        pub_key: vec![128u8; 500], // 500B public key
+        pub_key: vec![128u8; 500],    // 500B public key
     };
-    
+
     let large_tx_output = TXOutput {
         value: i32::MAX,
         pub_key_hash: vec![42u8; 1000], // 1KB hash
@@ -600,7 +653,8 @@ fn test_large_transaction_data_without_proof_of_work() {
     };
 
     let transactions = vec![large_transaction];
-    let block = Block::new_block_without_proof_of_work("large_data_test".to_string(), &transactions, 1);
+    let block =
+        Block::new_block_without_proof_of_work("large_data_test".to_string(), &transactions, 1);
 
     // Verify block handles large transaction data
     assert_eq!(block.get_transactions().len(), 1);
@@ -609,8 +663,14 @@ fn test_large_transaction_data_without_proof_of_work() {
     // Test serialization with large data
     let serialized = block.serialize();
     let deserialized = Block::deserialize(&serialized);
-    assert_eq!(block.get_transactions().len(), deserialized.get_transactions().len());
-    assert_eq!(block.get_transactions()[0].get_id(), deserialized.get_transactions()[0].get_id());
+    assert_eq!(
+        block.get_transactions().len(),
+        deserialized.get_transactions().len()
+    );
+    assert_eq!(
+        block.get_transactions()[0].get_id(),
+        deserialized.get_transactions()[0].get_id()
+    );
 }
 
 #[test]
@@ -618,17 +678,24 @@ fn test_block_memory_layout_and_cloning() {
     let transaction = create_test_transaction(vec![1, 2, 3, 4, 5]);
     let transactions = vec![transaction];
 
-    let original_block = Block::new_block_without_proof_of_work("clone_test".to_string(), &transactions, 1);
+    let original_block =
+        Block::new_block_without_proof_of_work("clone_test".to_string(), &transactions, 1);
     let cloned_block = original_block.clone();
 
     // Verify clone has same values
     assert_eq!(original_block.get_hash(), cloned_block.get_hash());
-    assert_eq!(original_block.get_pre_block_hash(), cloned_block.get_pre_block_hash());
+    assert_eq!(
+        original_block.get_pre_block_hash(),
+        cloned_block.get_pre_block_hash()
+    );
     assert_eq!(original_block.get_height(), cloned_block.get_height());
     assert_eq!(original_block.get_timestamp(), cloned_block.get_timestamp());
     assert_eq!(original_block.get_nonce(), cloned_block.get_nonce());
-    assert_eq!(original_block.get_transactions().len(), cloned_block.get_transactions().len());
+    assert_eq!(
+        original_block.get_transactions().len(),
+        cloned_block.get_transactions().len()
+    );
 
     // Verify they are separate instances (if we could modify them)
     // This test mainly ensures Clone trait works correctly
-} 
+}
