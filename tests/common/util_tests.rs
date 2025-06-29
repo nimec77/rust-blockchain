@@ -1,4 +1,4 @@
-use rust_blockchain::util::{current_timestamp, sha256_digest, base58_encode, base58_decode, current_dir};
+use rust_blockchain::util::{current_timestamp, sha256_digest, base58_encode, base58_decode, current_dir, ecdsa_p256_sha256_sign_digest, ecdsa_p256_sha256_sign_verify};
 
 #[test]
 fn test_current_timestamp() {
@@ -513,4 +513,367 @@ fn test_utility_functions_integration() {
     
     assert!(timestamp2 >= timestamp1);
     assert!(timestamp2 - timestamp1 <= 1); // Should be within 1 second
+}
+
+#[test]
+fn test_ecdsa_p256_sha256_sign_digest_basic() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING};
+    use ring::rand::SystemRandom;
+
+    // Generate a test key pair
+    let rng = SystemRandom::new();
+    let pkcs8_bytes = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+    let pkcs8 = pkcs8_bytes.as_ref();
+    
+    // Test message
+    let message = b"test message for signing";
+    
+    // Sign the message
+    let signature = ecdsa_p256_sha256_sign_digest(pkcs8, message);
+    
+    // Signature should not be empty
+    assert!(!signature.is_empty());
+    
+    // Signature should be approximately 64 bytes for P-256 (may vary slightly)
+    assert!(signature.len() >= 60 && signature.len() <= 72);
+}
+
+#[test]
+fn test_ecdsa_p256_sha256_sign_digest_consistency() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING};
+    use ring::rand::SystemRandom;
+
+    // Generate a test key pair
+    let rng = SystemRandom::new();
+    let pkcs8_bytes = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+    let pkcs8 = pkcs8_bytes.as_ref();
+    
+    // Test message
+    let message = b"consistency test message";
+    
+    // Sign the same message multiple times - signatures may differ due to randomness
+    let signature1 = ecdsa_p256_sha256_sign_digest(pkcs8, message);
+    let signature2 = ecdsa_p256_sha256_sign_digest(pkcs8, message);
+    
+    // Both signatures should be valid (not empty)
+    assert!(!signature1.is_empty());
+    assert!(!signature2.is_empty());
+    
+    // Signatures may be different due to randomness in ECDSA
+    // But both should be valid length
+    assert!(signature1.len() >= 60 && signature1.len() <= 72);
+    assert!(signature2.len() >= 60 && signature2.len() <= 72);
+}
+
+#[test]
+fn test_ecdsa_p256_sha256_sign_digest_different_messages() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING};
+    use ring::rand::SystemRandom;
+
+    // Generate a test key pair
+    let rng = SystemRandom::new();
+    let pkcs8_bytes = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+    let pkcs8 = pkcs8_bytes.as_ref();
+    
+    // Different messages
+    let message1 = b"first test message";
+    let message2 = b"second test message";
+    
+    // Sign different messages
+    let signature1 = ecdsa_p256_sha256_sign_digest(pkcs8, message1);
+    let signature2 = ecdsa_p256_sha256_sign_digest(pkcs8, message2);
+    
+    // Signatures should be different for different messages
+    assert_ne!(signature1, signature2);
+    assert!(!signature1.is_empty());
+    assert!(!signature2.is_empty());
+}
+
+#[test]
+fn test_ecdsa_p256_sha256_sign_verify_valid_signature() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING, KeyPair};
+    use ring::rand::SystemRandom;
+
+    // Generate a test key pair
+    let rng = SystemRandom::new();
+    let pkcs8_bytes = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+    let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8_bytes.as_ref(), &rng).unwrap();
+    
+    // Get public key
+    let public_key = key_pair.public_key().as_ref();
+    
+    // Test message
+    let message = b"message to sign and verify";
+    
+    // Sign the message
+    let signature = ecdsa_p256_sha256_sign_digest(pkcs8_bytes.as_ref(), message);
+    
+    // Verify the signature
+    let is_valid = ecdsa_p256_sha256_sign_verify(public_key, &signature, message);
+    
+    // Signature should be valid
+    assert!(is_valid);
+}
+
+#[test]
+fn test_ecdsa_p256_sha256_sign_verify_invalid_signature() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING, KeyPair};
+    use ring::rand::SystemRandom;
+
+    // Generate a test key pair
+    let rng = SystemRandom::new();
+    let pkcs8_bytes = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+    let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8_bytes.as_ref(), &rng).unwrap();
+    
+    // Get public key
+    let public_key = key_pair.public_key().as_ref();
+    
+    // Test message
+    let message = b"original message";
+    
+    // Sign the message
+    let mut signature = ecdsa_p256_sha256_sign_digest(pkcs8_bytes.as_ref(), message);
+    
+    // Corrupt the signature by changing one byte
+    if !signature.is_empty() {
+        signature[0] = signature[0].wrapping_add(1);
+    }
+    
+    // Verify the corrupted signature
+    let is_valid = ecdsa_p256_sha256_sign_verify(public_key, &signature, message);
+    
+    // Corrupted signature should be invalid
+    assert!(!is_valid);
+}
+
+#[test]
+fn test_ecdsa_p256_sha256_sign_verify_wrong_message() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING, KeyPair};
+    use ring::rand::SystemRandom;
+
+    // Generate a test key pair
+    let rng = SystemRandom::new();
+    let pkcs8_bytes = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+    let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8_bytes.as_ref(), &rng).unwrap();
+    
+    // Get public key
+    let public_key = key_pair.public_key().as_ref();
+    
+    // Original message and different message
+    let original_message = b"original message";
+    let different_message = b"different message";
+    
+    // Sign the original message
+    let signature = ecdsa_p256_sha256_sign_digest(pkcs8_bytes.as_ref(), original_message);
+    
+    // Try to verify with different message
+    let is_valid = ecdsa_p256_sha256_sign_verify(public_key, &signature, different_message);
+    
+    // Should be invalid with wrong message
+    assert!(!is_valid);
+}
+
+#[test]
+fn test_ecdsa_p256_sha256_sign_verify_wrong_public_key() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING, KeyPair};
+    use ring::rand::SystemRandom;
+
+    let rng = SystemRandom::new();
+    
+    // Generate first key pair
+    let pkcs8_bytes1 = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+    
+    // Generate second key pair
+    let pkcs8_bytes2 = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+    let key_pair2 = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8_bytes2.as_ref(), &rng).unwrap();
+    
+    // Get public key from second pair
+    let public_key2 = key_pair2.public_key().as_ref();
+    
+    // Test message
+    let message = b"test message";
+    
+    // Sign with first key pair
+    let signature = ecdsa_p256_sha256_sign_digest(pkcs8_bytes1.as_ref(), message);
+    
+    // Try to verify with second key pair's public key
+    let is_valid = ecdsa_p256_sha256_sign_verify(public_key2, &signature, message);
+    
+    // Should be invalid with wrong public key
+    assert!(!is_valid);
+}
+
+#[test]
+fn test_ecdsa_p256_sha256_sign_verify_empty_message() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING, KeyPair};
+    use ring::rand::SystemRandom;
+
+    // Generate a test key pair
+    let rng = SystemRandom::new();
+    let pkcs8_bytes = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+    let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8_bytes.as_ref(), &rng).unwrap();
+    
+    // Get public key
+    let public_key = key_pair.public_key().as_ref();
+    
+    // Empty message
+    let message = b"";
+    
+    // Sign the empty message
+    let signature = ecdsa_p256_sha256_sign_digest(pkcs8_bytes.as_ref(), message);
+    
+    // Verify the signature
+    let is_valid = ecdsa_p256_sha256_sign_verify(public_key, &signature, message);
+    
+    // Should be valid even for empty message
+    assert!(is_valid);
+}
+
+#[test]
+fn test_ecdsa_p256_sha256_sign_verify_large_message() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING, KeyPair};
+    use ring::rand::SystemRandom;
+
+    // Generate a test key pair
+    let rng = SystemRandom::new();
+    let pkcs8_bytes = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+    let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8_bytes.as_ref(), &rng).unwrap();
+    
+    // Get public key
+    let public_key = key_pair.public_key().as_ref();
+    
+    // Large message (10KB)
+    let large_message = vec![0x42u8; 10000];
+    
+    // Sign the large message
+    let signature = ecdsa_p256_sha256_sign_digest(pkcs8_bytes.as_ref(), &large_message);
+    
+    // Verify the signature
+    let is_valid = ecdsa_p256_sha256_sign_verify(public_key, &signature, &large_message);
+    
+    // Should be valid for large message
+    assert!(is_valid);
+}
+
+#[test]
+fn test_ecdsa_p256_sha256_sign_verify_empty_signature() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING, KeyPair};
+    use ring::rand::SystemRandom;
+
+    // Generate a test key pair
+    let rng = SystemRandom::new();
+    let pkcs8_bytes = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+    let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8_bytes.as_ref(), &rng).unwrap();
+    
+    // Get public key
+    let public_key = key_pair.public_key().as_ref();
+    
+    // Test message
+    let message = b"test message";
+    
+    // Empty signature
+    let empty_signature = vec![];
+    
+    // Try to verify empty signature
+    let is_valid = ecdsa_p256_sha256_sign_verify(public_key, &empty_signature, message);
+    
+    // Empty signature should be invalid
+    assert!(!is_valid);
+}
+
+#[test]
+fn test_ecdsa_p256_sha256_sign_verify_binary_data() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING, KeyPair};
+    use ring::rand::SystemRandom;
+
+    // Generate a test key pair
+    let rng = SystemRandom::new();
+    let pkcs8_bytes = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+    let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8_bytes.as_ref(), &rng).unwrap();
+    
+    // Get public key
+    let public_key = key_pair.public_key().as_ref();
+    
+    // Binary data message
+    let binary_message = vec![0x00, 0xFF, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0];
+    
+    // Sign the binary message
+    let signature = ecdsa_p256_sha256_sign_digest(pkcs8_bytes.as_ref(), &binary_message);
+    
+    // Verify the signature
+    let is_valid = ecdsa_p256_sha256_sign_verify(public_key, &signature, &binary_message);
+    
+    // Should be valid for binary data
+    assert!(is_valid);
+}
+
+#[test]
+fn test_ecdsa_p256_sha256_integration_multiple_signatures() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING, KeyPair};
+    use ring::rand::SystemRandom;
+
+    // Generate a test key pair
+    let rng = SystemRandom::new();
+    let pkcs8_bytes = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+    let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8_bytes.as_ref(), &rng).unwrap();
+    
+    // Get public key
+    let public_key = key_pair.public_key().as_ref();
+    
+    // Test multiple messages
+    let messages = vec![
+        b"first message".to_vec(),
+        b"second message".to_vec(),
+        b"third message".to_vec(),
+        vec![0x01, 0x02, 0x03, 0x04], // binary data
+        vec![], // empty message
+    ];
+    
+    // Sign and verify each message
+    for message in &messages {
+        let signature = ecdsa_p256_sha256_sign_digest(pkcs8_bytes.as_ref(), message);
+        let is_valid = ecdsa_p256_sha256_sign_verify(public_key, &signature, message);
+        
+        assert!(is_valid, "Failed for message: {message:?}");
+        assert!(!signature.is_empty(), "Signature should not be empty for message: {message:?}");
+    }
+}
+
+#[test]
+fn test_ecdsa_p256_sha256_cross_verification() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING, KeyPair};
+    use ring::rand::SystemRandom;
+
+    let rng = SystemRandom::new();
+    
+    // Generate multiple key pairs
+    let key_pairs: Vec<_> = (0..3).map(|_| {
+        let pkcs8_bytes = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng).unwrap();
+        let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8_bytes.as_ref(), &rng).unwrap();
+        (pkcs8_bytes, key_pair)
+    }).collect();
+    
+    let message = b"cross verification test";
+    
+    // Each key pair should verify its own signatures but not others'
+    for i in 0..key_pairs.len() {
+        let (ref pkcs8_i, ref key_pair_i) = key_pairs[i];
+        let _public_key_i = key_pair_i.public_key().as_ref();
+        let signature_i = ecdsa_p256_sha256_sign_digest(pkcs8_i.as_ref(), message);
+        
+        for j in 0..key_pairs.len() {
+            let (_, ref key_pair_j) = key_pairs[j];
+            let public_key_j = key_pair_j.public_key().as_ref();
+            
+            let is_valid = ecdsa_p256_sha256_sign_verify(public_key_j, &signature_i, message);
+            
+            if i == j {
+                // Should verify its own signature
+                assert!(is_valid, "Key pair {i} should verify its own signature");
+            } else {
+                // Should not verify other signatures
+                assert!(!is_valid, "Key pair {j} should not verify signature from key pair {i}");
+            }
+        }
+    }
 } 
