@@ -1,5 +1,5 @@
 use num_bigint::BigInt;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BincodeBigInt(pub BigInt);
 
