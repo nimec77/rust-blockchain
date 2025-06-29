@@ -559,4 +559,323 @@ fn test_blockchain_empty_string_handling() {
     assert_eq!(blockchain.get_tip_hash(), blockchain2.get_tip_hash());
     
     // TestDatabase will auto-cleanup when dropped
+}
+
+#[test]
+fn test_add_block_new_block() {
+    let test_name = "add_block_new_block";
+    let test_db = TestDatabase::new(test_name);
+    
+    // Create an initial tip block
+    let initial_block = create_test_block("genesis_hash".to_string(), 0);
+    let initial_hash = initial_block.get_hash().to_string();
+    
+    // Set up blockchain with initial block as tip
+    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone());
+    
+    // Store initial block in database
+    let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
+    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
+    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+
+    // Create a test block with higher height
+    let test_block = create_test_block(initial_hash.clone(), 1);
+    let block_hash = test_block.get_hash().to_string();
+
+    // Add the block
+    blockchain.add_block(&test_block);
+
+    // Verify the block was added to the database
+    let stored_block_bytes = blocks_tree.get(&block_hash).unwrap().expect("Block should be stored");
+    let stored_block = Block::deserialize(stored_block_bytes.as_ref());
+
+    assert_eq!(stored_block.get_hash(), test_block.get_hash());
+    assert_eq!(stored_block.get_height(), test_block.get_height());
+    assert_eq!(stored_block.get_pre_block_hash(), test_block.get_pre_block_hash());
+}
+
+#[test]
+fn test_add_block_duplicate_block() {
+    let test_name = "add_block_duplicate";
+    let test_db = TestDatabase::new(test_name);
+    
+    // Create an initial tip block
+    let initial_block = create_test_block("genesis_hash".to_string(), 0);
+    let initial_hash = initial_block.get_hash().to_string();
+    
+    // Set up blockchain with initial block as tip
+    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone());
+    
+    // Store initial block in database
+    let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
+    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
+    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+
+    // Create and add a block first time
+    let test_block = create_test_block(initial_hash.clone(), 1);
+    blockchain.add_block(&test_block);
+
+    // Try to add the same block again
+    blockchain.add_block(&test_block);
+
+    // Verify it only exists once in the database
+    let block_exists = blocks_tree.get(test_block.get_hash()).unwrap().is_some();
+    assert!(block_exists, "Block should still exist after duplicate add");
+
+    // Verify no errors occurred and the operation completed successfully
+    let stored_block_bytes = blocks_tree.get(test_block.get_hash()).unwrap().unwrap();
+    let stored_block = Block::deserialize(stored_block_bytes.as_ref());
+    assert_eq!(stored_block.get_hash(), test_block.get_hash());
+}
+
+#[test]
+fn test_add_block_updates_tip_with_higher_height() {
+    let test_name = "add_block_updates_tip_higher";
+    let test_db = TestDatabase::new(test_name);
+    
+    // Create initial tip block with height 1
+    let initial_block = create_test_block("genesis_hash".to_string(), 1);
+    let initial_hash = initial_block.get_hash().to_string();
+    
+    // Set up blockchain with the initial block as tip
+    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone());
+    
+    // Store initial block in database
+    let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
+    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
+    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+
+    // Create new block with higher height
+    let new_block = create_test_block(initial_hash.clone(), 2);
+    let new_hash = new_block.get_hash().to_string();
+
+    // Add the new block
+    blockchain.add_block(&new_block);
+
+    // Verify tip hash was updated in blockchain instance
+    assert_eq!(blockchain.get_tip_hash(), new_hash);
+
+    // Verify tip hash was updated in database
+    let stored_tip = blocks_tree.get(TIP_BLOCK_HASH_KEY).unwrap().unwrap();
+    let stored_tip_str = String::from_utf8(stored_tip.to_vec()).unwrap();
+    assert_eq!(stored_tip_str, new_hash);
+}
+
+#[test]
+fn test_add_block_does_not_update_tip_with_lower_height() {
+    let test_name = "add_block_no_update_tip_lower";
+    let test_db = TestDatabase::new(test_name);
+    
+    // Create initial tip block with height 2
+    let initial_block = create_test_block("genesis_hash".to_string(), 2);
+    let initial_hash = initial_block.get_hash().to_string();
+    
+    // Set up blockchain with the initial block as tip
+    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone());
+    
+    // Store initial block in database
+    let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
+    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
+    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+
+    // Create new block with lower height
+    let new_block = create_test_block("some_other_hash".to_string(), 1);
+    let new_hash = new_block.get_hash().to_string();
+
+    // Add the new block
+    blockchain.add_block(&new_block);
+
+    // Verify tip hash was NOT updated in blockchain instance
+    assert_eq!(blockchain.get_tip_hash(), initial_hash);
+
+    // Verify tip hash was NOT updated in database
+    let stored_tip = blocks_tree.get(TIP_BLOCK_HASH_KEY).unwrap().unwrap();
+    let stored_tip_str = String::from_utf8(stored_tip.to_vec()).unwrap();
+    assert_eq!(stored_tip_str, initial_hash);
+
+    // Verify the new block was still stored
+    let stored_new_block = blocks_tree.get(&new_hash).unwrap().unwrap();
+    let deserialized_new_block = Block::deserialize(stored_new_block.as_ref());
+    assert_eq!(deserialized_new_block.get_hash(), new_hash);
+}
+
+#[test]
+fn test_add_block_does_not_update_tip_with_equal_height() {
+    let test_name = "add_block_no_update_tip_equal";
+    let test_db = TestDatabase::new(test_name);
+    
+    // Create initial tip block with height 1
+    let initial_block = create_test_block("genesis_hash".to_string(), 1);
+    let initial_hash = initial_block.get_hash().to_string();
+    
+    // Set up blockchain with the initial block as tip
+    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone());
+    
+    // Store initial block in database
+    let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
+    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
+    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+
+    // Create new block with equal height but different hash
+    let new_block = create_test_block("different_prev_hash".to_string(), 1);
+    let new_hash = new_block.get_hash().to_string();
+
+    // Add the new block
+    blockchain.add_block(&new_block);
+
+    // Verify tip hash was NOT updated in blockchain instance
+    assert_eq!(blockchain.get_tip_hash(), initial_hash);
+
+    // Verify tip hash was NOT updated in database
+    let stored_tip = blocks_tree.get(TIP_BLOCK_HASH_KEY).unwrap().unwrap();
+    let stored_tip_str = String::from_utf8(stored_tip.to_vec()).unwrap();
+    assert_eq!(stored_tip_str, initial_hash);
+
+    // Verify the new block was still stored
+    let stored_new_block = blocks_tree.get(&new_hash).unwrap().unwrap();
+    let deserialized_new_block = Block::deserialize(stored_new_block.as_ref());
+    assert_eq!(deserialized_new_block.get_hash(), new_hash);
+}
+
+#[test]
+fn test_add_block_multiple_blocks_chain() {
+    let test_name = "add_block_multiple_chain";
+    let test_db = TestDatabase::new(test_name);
+    
+    // Create genesis block
+    let genesis_block = create_test_genesis_block();
+    let genesis_hash = genesis_block.get_hash().to_string();
+    
+    // Set up blockchain with genesis as tip
+    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), genesis_hash.clone());
+    
+    // Store genesis block
+    let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
+    blocks_tree.insert(genesis_hash.as_str(), genesis_block.serialize()).unwrap();
+    blocks_tree.insert(TIP_BLOCK_HASH_KEY, genesis_hash.as_str()).unwrap();
+
+    // Create and add a chain of blocks
+    let mut previous_hash = genesis_hash;
+    let mut expected_tip_hash = previous_hash.clone();
+    
+    for height in 1..=3 {
+        let block = create_test_block(previous_hash.clone(), height);
+        let block_hash = block.get_hash().to_string();
+        
+        blockchain.add_block(&block);
+        
+        // Each new block should become the tip
+        assert_eq!(blockchain.get_tip_hash(), block_hash);
+        expected_tip_hash = block_hash.clone();
+        previous_hash = block_hash;
+    }
+
+    // Verify final tip is correct
+    assert_eq!(blockchain.get_tip_hash(), expected_tip_hash);
+    
+    // Verify all blocks are stored
+    for height in 1..=3 {
+        let expected_count = height + 1; // genesis + height blocks
+        let mut count = 0;
+        for item in blocks_tree.iter() {
+            if let Ok((key, _)) = item {
+                let key_str = String::from_utf8_lossy(&key);
+                if key_str != TIP_BLOCK_HASH_KEY {
+                    count += 1;
+                }
+            }
+        }
+        if height == 3 {
+            assert_eq!(count, expected_count);
+        }
+    }
+}
+
+#[test]
+fn test_add_block_transaction_consistency() {
+    let test_name = "add_block_transaction_consistency";
+    let test_db = TestDatabase::new(test_name);
+    
+    // Create initial tip block
+    let initial_block = create_test_block("genesis".to_string(), 1);
+    let initial_hash = initial_block.get_hash().to_string();
+    
+    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone());
+    
+    // Store initial block
+    let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
+    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
+    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+
+    // Create new block with higher height
+    let new_block = create_test_block(initial_hash.clone(), 2);
+    let new_hash = new_block.get_hash().to_string();
+
+    // Add the block
+    blockchain.add_block(&new_block);
+
+    // Verify both block storage and tip update happened atomically
+    let stored_block = blocks_tree.get(&new_hash).unwrap();
+    let stored_tip = blocks_tree.get(TIP_BLOCK_HASH_KEY).unwrap();
+    
+    assert!(stored_block.is_some(), "Block should be stored");
+    assert_eq!(
+        String::from_utf8(stored_tip.unwrap().to_vec()).unwrap(),
+        new_hash,
+        "Tip should be updated"
+    );
+    
+    // Verify blockchain instance is also consistent
+    assert_eq!(blockchain.get_tip_hash(), new_hash);
+}
+
+#[test]
+fn test_add_block_concurrent_access() {
+    use std::thread;
+    use std::sync::Arc;
+    
+    let test_name = "add_block_concurrent";
+    let test_db = TestDatabase::new(test_name);
+    
+    // Create initial setup
+    let initial_block = create_test_block("genesis".to_string(), 0);
+    let initial_hash = initial_block.get_hash().to_string();
+    
+    let blockchain = Arc::new(Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone()));
+    
+    // Store initial block
+    let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
+    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
+    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+
+    // Create multiple blocks to add concurrently
+    let blocks: Vec<Block> = (1..=5).map(|i| {
+        create_test_block(format!("prev_hash_{}", i), i)
+    }).collect();
+    
+    // Store block hashes for verification
+    let block_hashes: Vec<String> = blocks.iter().map(|b| b.get_hash().to_string()).collect();
+    
+    // Add blocks concurrently
+    let handles: Vec<_> = blocks.into_iter().enumerate().map(|(i, block)| {
+        let blockchain_clone = Arc::clone(&blockchain);
+        thread::spawn(move || {
+            blockchain_clone.add_block(&block);
+            (i, block.get_hash().to_string())
+        })
+    }).collect();
+
+    // Wait for all threads to complete
+    let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+    
+    // Verify all blocks were added
+    for (i, expected_hash) in results {
+        let stored_block = blocks_tree.get(&expected_hash).unwrap();
+        assert!(stored_block.is_some(), "Block {} should be stored", i);
+        assert_eq!(block_hashes[i], expected_hash);
+    }
+    
+    // Verify one of the blocks became the tip (the one with highest height)
+    let final_tip = blockchain.get_tip_hash();
+    assert!(block_hashes.contains(&final_tip), "Final tip should be one of the added blocks");
 } 

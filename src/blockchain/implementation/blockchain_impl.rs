@@ -86,4 +86,25 @@ impl Blockchain {
 
         block
     }
+
+    pub fn add_block(&self, block: &Block) {
+        let block_tree = self.db.open_tree(BLOCKS_TREE).unwrap();
+        if block_tree.get(block.get_hash()).unwrap().is_some() {
+            return;
+        }
+        let _: TransactionResult<(), ()> = block_tree.transaction(|tx_db| {
+            let _ = tx_db.insert(block.get_hash(), block.serialize()).unwrap();
+
+            let tip_block_bytes = tx_db
+                .get(self.get_tip_hash())
+                .unwrap()
+                .expect("The tip hash is not valid");
+            let tip_block = Block::deserialize(tip_block_bytes.as_ref());
+            if block.get_height() > tip_block.get_height() {
+                let _ = tx_db.insert(TIP_BLOCK_HASH_KEY, block.get_hash()).unwrap();
+                self.set_tip_hash(block.get_hash());
+            }
+            Ok(())
+        });
+    }
 }
