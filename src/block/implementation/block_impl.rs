@@ -1,18 +1,7 @@
 use bincode::config::standard;
 use sled::IVec;
 
-use crate::{proof_of_work::ProofOfWork, transaction::transaction::Transaction, util};
-
-
-#[derive(Clone, bincode::Encode, bincode::Decode)]
-pub struct Block {
-    timestamp: i64,
-    pre_block_hash: String,
-    hash: String,
-    transactions: Vec<Transaction>,
-    nonce: i64,
-    height: usize,
-}
+use crate::{block::data::block::Block, proof_of_work::data::proof_of_work::ProofOfWork, transaction::transaction::Transaction, util};
 
 impl Block {
     pub fn new_block(pre_block_hash: String, transactions: &[Transaction], height: usize) -> Block {

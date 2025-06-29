@@ -1,1 +1,1 @@
-pub mod blockchain_data;
+pub mod blockchain;

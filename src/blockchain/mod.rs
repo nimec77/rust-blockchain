@@ -1,6 +1,6 @@
 mod data;
 
-pub use data::blockchain_data::*;
+pub use data::blockchain::*;
 
 mod implementation;
 

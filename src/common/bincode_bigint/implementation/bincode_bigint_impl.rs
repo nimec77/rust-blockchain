@@ -1,10 +1,8 @@
 use bincode::{Decode, Encode};
 use num_bigint::BigInt;
 
-#[derive(Clone)]
-pub struct BincodeBigInt(pub BigInt);
+use crate::common::bincode_bigint::data::bincode_bigint::BincodeBigInt;
 
-#[allow(dead_code)]
 impl BincodeBigInt {
     /// Create a new BincodeBigInt by taking ownership of a BigInt (no clone needed)
     pub fn new(big_int: BigInt) -> Self {
@@ -28,7 +26,6 @@ impl BincodeBigInt {
 }
 
 // Implement From trait for move semantics (no clone needed)
-#[allow(dead_code)]
 impl From<BigInt> for BincodeBigInt {
     fn from(big_int: BigInt) -> Self {
         BincodeBigInt(big_int)
@@ -36,7 +33,6 @@ impl From<BigInt> for BincodeBigInt {
 }
 
 // Implement From trait for reference (requires clone, but convenient)
-#[allow(dead_code)]
 impl From<&BigInt> for BincodeBigInt {
     fn from(big_int: &BigInt) -> Self {
         BincodeBigInt(big_int.clone())
@@ -44,7 +40,6 @@ impl From<&BigInt> for BincodeBigInt {
 }
 
 // Implement AsRef for easy access to the inner BigInt
-#[allow(dead_code)]
 impl AsRef<BigInt> for BincodeBigInt {
     fn as_ref(&self) -> &BigInt {
         &self.0
@@ -52,7 +47,6 @@ impl AsRef<BigInt> for BincodeBigInt {
 }
 
 // Implement Deref for transparent access to BigInt methods
-#[allow(dead_code)]
 impl std::ops::Deref for BincodeBigInt {
     type Target = BigInt;
 
