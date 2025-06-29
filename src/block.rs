@@ -600,7 +600,7 @@ mod tests {
         let transactions = vec![transaction];
 
         // Test different pre_hash formats
-        let test_cases = vec![
+        let test_cases = [
             "".to_string(),                     // Empty string
             "0".to_string(),                    // Single character
             "a".repeat(64),                     // 64 character hex-like string
@@ -626,7 +626,7 @@ mod tests {
             }
 
             let block = Block::new_block_without_proof_of_work(
-                format!("test_size_{}", size),
+                format!("test_size_{size}"),
                 &transactions,
                 size,
             );
@@ -706,7 +706,7 @@ mod tests {
 
         for &height in &test_heights {
             let block = Block::new_block_without_proof_of_work(
-                format!("height_{}", height),
+                format!("height_{height}"),
                 &transactions,
                 height,
             );
