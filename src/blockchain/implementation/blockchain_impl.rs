@@ -1,9 +1,13 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
+use data_encoding::HEXLOWER;
 use sled::{Db, Tree, transaction::TransactionResult};
 
 use crate::{
-    Block, Transaction,
+    Block, BlockchainIterator, TXOutput, Transaction,
     blockchain::{BLOCKS_TREE, Blockchain, TIP_BLOCK_HASH_KEY},
     util,
 };
@@ -106,5 +110,56 @@ impl Blockchain {
             }
             Ok(())
         });
+    }
+
+    pub fn iterator(&self) -> BlockchainIterator {
+        BlockchainIterator::new(self.db.clone(), self.get_tip_hash())
+    }
+
+    pub fn find_utxo(&self) -> HashMap<String, Vec<TXOutput>> {
+        let mut utxo: HashMap<String, Vec<TXOutput>> = HashMap::new();
+        let mut spent_txos: HashMap<String, Vec<usize>> = HashMap::new();
+
+        let mut iterator = self.iterator();
+        loop {
+            let option = iterator.next();
+            if option.is_none() {
+                break;
+            }
+            let block = option.unwrap();
+            'outer: for tx in block.get_transactions() {
+                let txid_hex = HEXLOWER.encode(tx.get_id());
+                for (idx, out) in tx.get_vout().iter().enumerate() {
+                    if let Some(outs) = spent_txos.get(txid_hex.as_str()) {
+                        for spend_out_idx in outs {
+                            if idx.eq(spend_out_idx) {
+                                continue 'outer;
+                            }
+                        }
+                    }
+                    if utxo.contains_key(txid_hex.as_str()) {
+                        utxo.get_mut(txid_hex.as_str()).unwrap().push(out.clone());
+                    } else {
+                        utxo.insert(txid_hex.clone(), vec![out.clone()]);
+                    }
+                }
+                if tx.is_coinbase() {
+                    continue;
+                }
+
+                for txin in tx.get_vin() {
+                    let txid_hex = HEXLOWER.encode(txin.get_txid());
+                    if spent_txos.contains_key(txid_hex.as_str()) {
+                        spent_txos
+                            .get_mut(txid_hex.as_str())
+                            .unwrap()
+                            .push(txin.get_vout());
+                    } else {
+                        spent_txos.insert(txid_hex, vec![txin.get_vout()]);
+                    }
+                }
+            }
+        }
+        utxo
     }
 }

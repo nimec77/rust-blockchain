@@ -370,4 +370,239 @@ fn test_transaction_serialization() {
     assert_eq!(original_transaction.vout.len(), decoded_transaction.vout.len());
     assert_eq!(original_transaction.vin[0].get_txid(), decoded_transaction.vin[0].get_txid());
     assert_eq!(original_transaction.vout[0].get_value(), decoded_transaction.vout[0].get_value());
+}
+
+// Tests for Transaction::get_vin()
+#[test]
+fn test_transaction_get_vin_empty() {
+    let transaction = Transaction {
+        id: vec![1, 2, 3],
+        vin: vec![],
+        vout: vec![],
+    };
+    
+    let vin = transaction.get_vin();
+    assert_eq!(vin.len(), 0);
+    assert!(vin.is_empty());
+}
+
+#[test]
+fn test_transaction_get_vin_single_input() {
+    let tx_input = TXInput::new(b"test_txid", 0);
+    let transaction = Transaction {
+        id: vec![1, 2, 3],
+        vin: vec![tx_input.clone()],
+        vout: vec![],
+    };
+    
+    let vin = transaction.get_vin();
+    assert_eq!(vin.len(), 1);
+    assert_eq!(vin[0].get_txid(), tx_input.get_txid());
+    assert_eq!(vin[0].get_vout(), tx_input.get_vout());
+}
+
+#[test]
+fn test_transaction_get_vin_multiple_inputs() {
+    let tx_input1 = TXInput::new(b"txid1", 0);
+    let tx_input2 = TXInput::new(b"txid2", 1);
+    let tx_input3 = TXInput::new(b"txid3", 2);
+    
+    let transaction = Transaction {
+        id: vec![1, 2, 3],
+        vin: vec![tx_input1.clone(), tx_input2.clone(), tx_input3.clone()],
+        vout: vec![],
+    };
+    
+    let vin = transaction.get_vin();
+    assert_eq!(vin.len(), 3);
+    assert_eq!(vin[0].get_txid(), tx_input1.get_txid());
+    assert_eq!(vin[1].get_txid(), tx_input2.get_txid());
+    assert_eq!(vin[2].get_txid(), tx_input3.get_txid());
+    assert_eq!(vin[0].get_vout(), 0);
+    assert_eq!(vin[1].get_vout(), 1);
+    assert_eq!(vin[2].get_vout(), 2);
+}
+
+// Tests for Transaction::get_vout()
+#[test]
+fn test_transaction_get_vout_empty() {
+    let transaction = Transaction {
+        id: vec![1, 2, 3],
+        vin: vec![],
+        vout: vec![],
+    };
+    
+    let vout = transaction.get_vout();
+    assert_eq!(vout.len(), 0);
+    assert!(vout.is_empty());
+}
+
+#[test]
+fn test_transaction_get_vout_single_output() {
+    let tx_output = TXOutput {
+        value: 100,
+        pub_key_hash: vec![1, 2, 3, 4],
+    };
+    
+    let transaction = Transaction {
+        id: vec![1, 2, 3],
+        vin: vec![],
+        vout: vec![tx_output.clone()],
+    };
+    
+    let vout = transaction.get_vout();
+    assert_eq!(vout.len(), 1);
+    assert_eq!(vout[0].get_value(), tx_output.get_value());
+    assert_eq!(vout[0].get_pub_key_hash(), tx_output.get_pub_key_hash());
+}
+
+#[test]
+fn test_transaction_get_vout_multiple_outputs() {
+    let tx_output1 = TXOutput {
+        value: 50,
+        pub_key_hash: vec![1, 2],
+    };
+    let tx_output2 = TXOutput {
+        value: 75,
+        pub_key_hash: vec![3, 4],
+    };
+    let tx_output3 = TXOutput {
+        value: 25,
+        pub_key_hash: vec![5, 6],
+    };
+    
+    let transaction = Transaction {
+        id: vec![1, 2, 3],
+        vin: vec![],
+        vout: vec![tx_output1.clone(), tx_output2.clone(), tx_output3.clone()],
+    };
+    
+    let vout = transaction.get_vout();
+    assert_eq!(vout.len(), 3);
+    assert_eq!(vout[0].get_value(), 50);
+    assert_eq!(vout[1].get_value(), 75);
+    assert_eq!(vout[2].get_value(), 25);
+    assert_eq!(vout[0].get_pub_key_hash(), &[1, 2]);
+    assert_eq!(vout[1].get_pub_key_hash(), &[3, 4]);
+    assert_eq!(vout[2].get_pub_key_hash(), &[5, 6]);
+}
+
+// Tests for Transaction::is_coinbase()
+#[test]
+fn test_transaction_is_coinbase_true() {
+    // Coinbase transaction: exactly one input with empty pub_key
+    let mut tx_input = TXInput::new(b"coinbase_txid", 0);
+    tx_input.pub_key = vec![]; // Empty pub_key indicates coinbase
+    
+    let transaction = Transaction {
+        id: vec![1, 2, 3],
+        vin: vec![tx_input],
+        vout: vec![],
+    };
+    
+    assert!(transaction.is_coinbase());
+}
+
+#[test]
+fn test_transaction_is_coinbase_false_multiple_inputs() {
+    // Not coinbase: multiple inputs
+    let mut tx_input1 = TXInput::new(b"txid1", 0);
+    tx_input1.pub_key = vec![]; // Even if pub_key is empty
+    let mut tx_input2 = TXInput::new(b"txid2", 1);
+    tx_input2.pub_key = vec![];
+    
+    let transaction = Transaction {
+        id: vec![1, 2, 3],
+        vin: vec![tx_input1, tx_input2],
+        vout: vec![],
+    };
+    
+    assert!(!transaction.is_coinbase());
+}
+
+#[test]
+fn test_transaction_is_coinbase_false_single_input_with_pub_key() {
+    // Not coinbase: single input but with non-empty pub_key
+    let mut tx_input = TXInput::new(b"regular_txid", 0);
+    tx_input.pub_key = vec![1, 2, 3, 4]; // Non-empty pub_key
+    
+    let transaction = Transaction {
+        id: vec![1, 2, 3],
+        vin: vec![tx_input],
+        vout: vec![],
+    };
+    
+    assert!(!transaction.is_coinbase());
+}
+
+#[test]
+fn test_transaction_is_coinbase_false_no_inputs() {
+    // Not coinbase: no inputs at all
+    let transaction = Transaction {
+        id: vec![1, 2, 3],
+        vin: vec![],
+        vout: vec![],
+    };
+    
+    assert!(!transaction.is_coinbase());
+}
+
+#[test]
+fn test_transaction_is_coinbase_with_outputs() {
+    // Coinbase transaction can have outputs
+    let mut tx_input = TXInput::new(b"coinbase_with_outputs", 0);
+    tx_input.pub_key = vec![]; // Empty pub_key
+    
+    let tx_output = TXOutput {
+        value: 50,
+        pub_key_hash: vec![10, 20, 30],
+    };
+    
+    let transaction = Transaction {
+        id: vec![1, 2, 3],
+        vin: vec![tx_input],
+        vout: vec![tx_output],
+    };
+    
+    assert!(transaction.is_coinbase());
+}
+
+#[test]
+fn test_transaction_get_methods_consistency() {
+    // Test that get_vin() and get_vout() return consistent views
+    let tx_input1 = TXInput::new(b"consistency_test1", 0);
+    let tx_input2 = TXInput::new(b"consistency_test2", 1);
+    
+    let tx_output1 = TXOutput {
+        value: 100,
+        pub_key_hash: vec![1, 2, 3],
+    };
+    let tx_output2 = TXOutput {
+        value: 200,
+        pub_key_hash: vec![4, 5, 6],
+    };
+    
+    let transaction = Transaction {
+        id: vec![1, 2, 3],
+        vin: vec![tx_input1, tx_input2],
+        vout: vec![tx_output1, tx_output2],
+    };
+    
+    // Test that the slices returned by get_vin() and get_vout() match the original vectors
+    assert_eq!(transaction.get_vin().len(), transaction.vin.len());
+    assert_eq!(transaction.get_vout().len(), transaction.vout.len());
+    
+    // Check individual elements
+    for (i, input) in transaction.get_vin().iter().enumerate() {
+        assert_eq!(input.get_txid(), transaction.vin[i].get_txid());
+        assert_eq!(input.get_vout(), transaction.vin[i].get_vout());
+    }
+    
+    for (i, output) in transaction.get_vout().iter().enumerate() {
+        assert_eq!(output.get_value(), transaction.vout[i].get_value());
+        assert_eq!(output.get_pub_key_hash(), transaction.vout[i].get_pub_key_hash());
+    }
+    
+    // This should not be a coinbase transaction (multiple inputs)
+    assert!(!transaction.is_coinbase());
 } 

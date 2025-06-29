@@ -1,4 +1,4 @@
-use crate::{transaction::Transaction, Blockchain};
+use crate::{Blockchain, TXInput, TXOutput, transaction::Transaction};
 
 impl Transaction {
     pub fn get_id(&self) -> &[u8] {
@@ -31,5 +31,17 @@ impl Transaction {
         //     }
         // }
         true
+    }
+
+    pub fn get_vin(&self) -> &[TXInput] {
+        self.vin.as_slice()
+    }
+
+    pub fn get_vout(&self) -> &[TXOutput] {
+        self.vout.as_slice()
+    }
+
+    pub fn is_coinbase(&self) -> bool {
+        self.vin.len() == 1 && self.vin[0].pub_key.is_empty()
     }
 }

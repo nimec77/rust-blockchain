@@ -777,12 +777,10 @@ fn test_add_block_multiple_blocks_chain() {
     for height in 1..=3 {
         let expected_count = height + 1; // genesis + height blocks
         let mut count = 0;
-        for item in blocks_tree.iter() {
-            if let Ok((key, _)) = item {
-                let key_str = String::from_utf8_lossy(&key);
-                if key_str != TIP_BLOCK_HASH_KEY {
-                    count += 1;
-                }
+        for (key, _) in blocks_tree.iter().flatten() {
+            let key_str = String::from_utf8_lossy(&key);
+            if key_str != TIP_BLOCK_HASH_KEY {
+                count += 1;
             }
         }
         if height == 3 {
@@ -850,7 +848,7 @@ fn test_add_block_concurrent_access() {
 
     // Create multiple blocks to add concurrently
     let blocks: Vec<Block> = (1..=5).map(|i| {
-        create_test_block(format!("prev_hash_{}", i), i)
+        create_test_block(format!("prev_hash_{i}"), i)
     }).collect();
     
     // Store block hashes for verification
@@ -871,7 +869,7 @@ fn test_add_block_concurrent_access() {
     // Verify all blocks were added
     for (i, expected_hash) in results {
         let stored_block = blocks_tree.get(&expected_hash).unwrap();
-        assert!(stored_block.is_some(), "Block {} should be stored", i);
+        assert!(stored_block.is_some(), "Block {i} should be stored");
         assert_eq!(block_hashes[i], expected_hash);
     }
     
