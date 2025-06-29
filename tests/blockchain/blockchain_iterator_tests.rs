@@ -49,7 +49,6 @@ fn test_blockchain_iterator_basic_functionality() {
     // TestDatabase will auto-cleanup when dropped
 }
 
-#[ignore = "Test failed"]
 #[test]
 fn test_blockchain_iterator_with_single_block() {
     let test_db = TestDatabase::new("iterator_single");
@@ -89,7 +88,6 @@ fn test_blockchain_iterator_empty_chain() {
     // TestDatabase will auto-cleanup when dropped
 }
 
-#[ignore = "Test failed"]
 #[test]
 fn test_blockchain_iterator_malformed_data() {
     let test_db = TestDatabase::new("iterator_malformed");
@@ -129,7 +127,6 @@ fn test_blockchain_iterator_iteration_order() {
     // TestDatabase will auto-cleanup when dropped
 }
 
-#[ignore = "Test failed"]
 #[test]
 fn test_blockchain_iterator_multiple_instances() {
     let (test_db, blocks) = setup_test_db_with_blocks();
@@ -177,7 +174,6 @@ fn test_blockchain_iterator_reuse() {
     // TestDatabase will auto-cleanup when dropped
 }
 
-#[ignore = "Test failed"]
 #[test]
 fn test_blockchain_iterator_with_complex_chain() {
     let test_db = TestDatabase::new("iterator_complex");
@@ -261,7 +257,6 @@ fn test_iterator_exhaustion_behavior() {
     // TestDatabase will auto-cleanup when dropped
 }
 
-#[ignore = "Test failed"]
 #[test]
 fn test_iterator_with_missing_intermediate_block() {
     let test_db = TestDatabase::new("iterator_missing_intermediate");
@@ -364,7 +359,6 @@ fn test_iterator_with_large_hash_keys() {
     // TestDatabase will auto-cleanup when dropped
 }
 
-#[ignore = "Test failed"]
 #[test]
 fn test_iterator_with_empty_string_hash() {
     let test_db = TestDatabase::new("iterator_empty_string");
@@ -493,7 +487,6 @@ fn test_iterator_performance_with_many_blocks() {
     // TestDatabase will auto-cleanup when dropped
 }
 
-#[ignore = "Test failed"]
 #[test]
 fn test_iterator_with_corrupted_data() {
     let test_db = TestDatabase::new("iterator_corrupted");
@@ -518,3 +511,5 @@ fn test_iterator_with_corrupted_data() {
     
     // TestDatabase will auto-cleanup when dropped
 }
+
+

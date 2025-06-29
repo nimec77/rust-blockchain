@@ -69,7 +69,14 @@ pub fn create_output_with_key_hash(key_hash: Vec<u8>) -> TXOutput {
 pub fn create_test_block(pre_hash: String, height: usize) -> Block {
     let transaction = create_test_transaction(vec![1, 2, 3, 4]);
     let transactions = vec![transaction];
-    Block::new_block_without_proof_of_work(pre_hash, &transactions, height)
+    let mut block = Block::new_block_without_proof_of_work(pre_hash, &transactions, height);
+    
+    // Generate a unique hash for each test block based on its contents
+    let hash_input = format!("{}|{}|{}", block.get_pre_block_hash(), block.get_height(), block.get_timestamp());
+    let hash_bytes = rust_blockchain::util::sha256_digest(hash_input.as_bytes());
+    block.hash = data_encoding::HEXLOWER.encode(&hash_bytes);
+    
+    block
 }
 
 /// Creates a test block with default parameters.

@@ -46,6 +46,12 @@ impl Block {
         blk
     }
 
+    pub fn try_deserialize(bytes: &[u8]) -> Result<Block, bincode::error::DecodeError> {
+        let (blk, _) = bincode::decode_from_slice(bytes, standard())?;
+
+        Ok(blk)
+    }
+
     pub fn get_transactions(&self) -> &[Transaction] {
         self.transactions.as_slice()
     }
