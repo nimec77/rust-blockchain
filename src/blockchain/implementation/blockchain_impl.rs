@@ -162,4 +162,21 @@ impl Blockchain {
         }
         utxo
     }
+
+    pub fn find_transaction(&self, txid: &[u8]) -> Option<Transaction> {
+        let mut iterator = self.iterator();
+        loop {
+            let option = iterator.next();
+            if option.is_none() {
+                break;
+            }
+            let block = option.unwrap();
+            for transaction in block.get_transactions() {
+                if txid.eq(transaction.get_id()) {
+                    return Some(transaction.clone());
+                }
+            }
+        }
+        None
+    }
 }
