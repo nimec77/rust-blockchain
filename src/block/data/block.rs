@@ -3,11 +3,11 @@ use crate::transaction::Transaction;
 
 #[derive(Clone, bincode::Encode, bincode::Decode)]
 pub struct Block {
-    pub timestamp: i64,
-    pub pre_block_hash: String,
-    pub hash: String,
-    pub transactions: Vec<Transaction>,
-    pub nonce: i64,
-    pub height: usize,
+    pub(crate) timestamp: i64,
+    pub(crate) pre_block_hash: String,
+    pub(crate) hash: String,
+    pub(crate) transactions: Vec<Transaction>,
+    pub(crate) nonce: i64,
+    pub(crate) height: usize,
 }
 

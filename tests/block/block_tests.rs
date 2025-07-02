@@ -12,16 +12,16 @@ fn test_new_block() {
     let block =
         Block::new_block_without_proof_of_work(pre_block_hash.clone(), &transactions, height);
 
-    assert_eq!(block.pre_block_hash, pre_block_hash);
-    assert_eq!(block.transactions.len(), 1);
-    assert_eq!(block.height, height);
+    assert_eq!(block.get_pre_block_hash(), pre_block_hash);
+    assert_eq!(block.get_transactions().len(), 1);
+    assert_eq!(block.get_height(), height);
     // Proof of work should have run, so nonce should be set (not 0)
-    assert!(block.nonce >= 0);
+    assert!(block.get_nonce() >= 0);
     // Hash should be set after proof of work
-    assert!(!block.hash.is_empty());
-    assert!(block.timestamp > 0);
+    assert!(!block.get_hash().is_empty());
+    assert!(block.get_timestamp() > 0);
     // Verify hash is hex encoded and reasonable length
-    assert!(block.hash.len() == 64); // SHA256 hex string length
+    assert!(block.get_hash().len() == 64); // SHA256 hex string length
 }
 
 #[test]
@@ -42,17 +42,17 @@ fn test_serialize_deserialize() {
     let deserialized_block = Block::deserialize(&serialized);
 
     assert_eq!(
-        original_block.pre_block_hash,
-        deserialized_block.pre_block_hash
+        original_block.get_pre_block_hash(),
+        deserialized_block.get_pre_block_hash()
     );
-    assert_eq!(original_block.hash, deserialized_block.hash);
+    assert_eq!(original_block.get_hash(), deserialized_block.get_hash());
     assert_eq!(
-        original_block.transactions.len(),
-        deserialized_block.transactions.len()
+        original_block.get_transactions().len(),
+        deserialized_block.get_transactions().len()
     );
-    assert_eq!(original_block.nonce, deserialized_block.nonce);
-    assert_eq!(original_block.height, deserialized_block.height);
-    assert_eq!(original_block.timestamp, deserialized_block.timestamp);
+    assert_eq!(original_block.get_nonce(), deserialized_block.get_nonce());
+    assert_eq!(original_block.get_height(), deserialized_block.get_height());
+    assert_eq!(original_block.get_timestamp(), deserialized_block.get_timestamp());
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn test_get_hash() {
     let transactions = vec![transaction];
 
     let mut block = Block::new_block_without_proof_of_work("test".to_string(), &transactions, 1);
-    block.hash = "test_hash".to_string();
+    block.set_hash("test_hash");
 
     assert_eq!(block.get_hash(), "test_hash");
 }
@@ -97,7 +97,7 @@ fn test_get_hash_bytes() {
     let transactions = vec![transaction];
 
     let mut block = Block::new_block_without_proof_of_work("test".to_string(), &transactions, 1);
-    block.hash = "test_hash".to_string();
+    block.set_hash("test_hash");
 
     let hash_bytes = block.get_hash_bytes();
     assert_eq!(hash_bytes, "test_hash".as_bytes().to_vec());
@@ -400,7 +400,7 @@ fn test_block_serialization_with_unicode_hash() {
         Block::new_block_without_proof_of_work("unicode_test".to_string(), &transactions, 3);
 
     // Test with ASCII hash
-    block.hash = "simple_ascii_hash".to_string();
+    block.set_hash("simple_ascii_hash");
     let serialized = block.serialize();
     let deserialized = Block::deserialize(&serialized);
     assert_eq!(block.get_hash(), deserialized.get_hash());

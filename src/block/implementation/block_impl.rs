@@ -56,12 +56,20 @@ impl Block {
         self.transactions.as_slice()
     }
 
+    pub fn set_transactions(&mut self, transactions: &[Transaction]) {
+        self.transactions = transactions.to_vec();
+    }
+
     pub fn get_pre_block_hash(&self) -> &str {
         self.pre_block_hash.as_str()
     }
 
     pub fn get_hash(&self) -> &str {
         self.hash.as_str()
+    }
+
+    pub fn set_hash(&mut self, hash: &str) {
+        self.hash = hash.to_string();
     }
 
     pub fn get_hash_bytes(&self) -> Vec<u8> {
