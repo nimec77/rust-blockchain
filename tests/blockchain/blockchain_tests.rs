@@ -1,5 +1,7 @@
-use rust_blockchain::{Blockchain, Block, Transaction, TXInput, TXOutput, BLOCKS_TREE, TIP_BLOCK_HASH_KEY};
 use crate::test_helpers::*;
+use rust_blockchain::{
+    BLOCKS_TREE, Block, Blockchain, TIP_BLOCK_HASH_KEY, TXInput, TXOutput, Transaction,
+};
 
 #[test]
 fn test_new_with_tip() {
@@ -148,47 +150,51 @@ fn test_new_blockchain_with_existing_data() {
     use std::fs;
     use std::thread;
     use std::time::Duration;
-    
+
     // Clean up any existing data directory first
     let data_dir = rust_blockchain::util::current_dir().join("data");
     if data_dir.exists() {
         let _ = fs::remove_dir_all(&data_dir);
     }
-    
+
     // Create the data directory that new_blockchain() expects
     fs::create_dir_all(&data_dir).unwrap();
-    
+
     // Scope to ensure database is fully closed before new_blockchain()
     let genesis_hash = {
         // Create a blockchain using the expected directory
         let test_db = sled::open(&data_dir).unwrap();
-        
+
         // Create a genesis block and store it
         let genesis_tx = create_test_transaction(vec![0, 0, 0, 0]);
         let genesis_block = Block::generate_genesis_block(&genesis_tx);
         let genesis_hash = genesis_block.get_hash().to_string();
-        
+
         // Store genesis block in database with proper structure
         let blocks_tree = test_db.open_tree(BLOCKS_TREE).unwrap();
-        blocks_tree.insert(genesis_hash.as_str(), genesis_block.serialize()).unwrap();
-        blocks_tree.insert(TIP_BLOCK_HASH_KEY, genesis_hash.as_str()).unwrap();
-        
+        blocks_tree
+            .insert(genesis_hash.as_str(), genesis_block.serialize())
+            .unwrap();
+        blocks_tree
+            .insert(TIP_BLOCK_HASH_KEY, genesis_hash.as_str())
+            .unwrap();
+
         // Ensure data is flushed and wait for file system sync
         blocks_tree.flush().unwrap();
         test_db.flush().unwrap();
-        
+
         genesis_hash
     }; // Database is now fully closed
-    
+
     // Wait a bit to ensure database files are fully released
     thread::sleep(Duration::from_millis(100));
-    
+
     // Now create blockchain from existing data
     let blockchain = Blockchain::new_blockchain();
-    
+
     // Verify it loaded the correct tip hash
     assert_eq!(blockchain.get_tip_hash(), genesis_hash);
-    
+
     // Clean up the test data directory
     if data_dir.exists() {
         robust_cleanup_test_db(&data_dir.to_string_lossy());
@@ -199,21 +205,19 @@ fn test_new_blockchain_with_existing_data() {
 fn test_new_blockchain_no_existing_data() {
     use std::fs;
     use std::panic;
-    
+
     // Clean up any existing data directory first
     let data_dir = rust_blockchain::util::current_dir().join("data");
     if data_dir.exists() {
         let _ = fs::remove_dir_all(&data_dir);
     }
-    
+
     // Try to create blockchain without any existing data - should panic
-    let result = panic::catch_unwind(|| {
-        Blockchain::new_blockchain()
-    });
-    
+    let result = panic::catch_unwind(Blockchain::new_blockchain);
+
     // Verify it panicked
     assert!(result.is_err());
-    
+
     // Clean up afterwards
     if data_dir.exists() {
         robust_cleanup_test_db(&data_dir.to_string_lossy());
@@ -224,33 +228,39 @@ fn test_new_blockchain_no_existing_data() {
 fn test_get_best_height() {
     let test_name = "get_best_height";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create blocks with different heights
     let mut block1 = create_test_block("".to_string(), 0);
     block1.set_hash_for_test("block1_hash");
-    
+
     let mut block2 = create_test_block("block1_hash".to_string(), 5);
     block2.set_hash_for_test("block2_hash");
-    
+
     let mut block3 = create_test_block("block2_hash".to_string(), 10);
     block3.set_hash_for_test("block3_hash");
-    
+
     // Store blocks in database
     let blocks_tree = test_db.open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert("block1_hash", block1.serialize()).unwrap();
-    blocks_tree.insert("block2_hash", block2.serialize()).unwrap();
-    blocks_tree.insert("block3_hash", block3.serialize()).unwrap();
-    
+    blocks_tree
+        .insert("block1_hash", block1.serialize())
+        .unwrap();
+    blocks_tree
+        .insert("block2_hash", block2.serialize())
+        .unwrap();
+    blocks_tree
+        .insert("block3_hash", block3.serialize())
+        .unwrap();
+
     // Test with different tip blocks
     let blockchain1 = Blockchain::new_with_tip(test_db.get_db().clone(), "block1_hash".to_string());
     assert_eq!(blockchain1.get_best_height(), 0);
-    
+
     let blockchain2 = Blockchain::new_with_tip(test_db.get_db().clone(), "block2_hash".to_string());
     assert_eq!(blockchain2.get_best_height(), 5);
-    
+
     let blockchain3 = Blockchain::new_with_tip(test_db.get_db().clone(), "block3_hash".to_string());
     assert_eq!(blockchain3.get_best_height(), 10);
-    
+
     // TestDatabase will auto-cleanup when dropped
 }
 
@@ -259,13 +269,14 @@ fn test_get_best_height() {
 fn test_get_best_height_invalid_tip() {
     let test_name = "get_best_height_invalid";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create blockchain with invalid tip hash
-    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), "nonexistent_hash".to_string());
-    
+    let blockchain =
+        Blockchain::new_with_tip(test_db.get_db().clone(), "nonexistent_hash".to_string());
+
     // This should panic when trying to get best height
     let _height = blockchain.get_best_height();
-    
+
     // TestDatabase will auto-cleanup when dropped
 }
 
@@ -273,28 +284,28 @@ fn test_get_best_height_invalid_tip() {
 fn test_blockchain_database_operations() {
     let test_name = "blockchain_db_ops";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create blockchain
     let blockchain = Blockchain::new_with_empty_tip(test_db.get_db().clone());
-    
+
     // Test database access
     let db_ref = blockchain.get_db();
-    
+
     // Create and access different trees
     let tree1 = db_ref.open_tree("test_tree_1").unwrap();
     let tree2 = db_ref.open_tree("test_tree_2").unwrap();
-    
+
     // Store and retrieve data
     tree1.insert("key1", "value1").unwrap();
     tree2.insert("key2", "value2").unwrap();
-    
+
     assert_eq!(tree1.get("key1").unwrap().unwrap().as_ref(), b"value1");
     assert_eq!(tree2.get("key2").unwrap().unwrap().as_ref(), b"value2");
-    
+
     // Verify trees are independent
     assert!(tree1.get("key2").unwrap().is_none());
     assert!(tree2.get("key1").unwrap().is_none());
-    
+
     // TestDatabase will auto-cleanup when dropped
 }
 
@@ -302,29 +313,37 @@ fn test_blockchain_database_operations() {
 fn test_blockchain_blocks_tree_access() {
     let test_name = "blockchain_blocks_tree";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create a simple test block with height 5
     let test_block = create_test_block("previous_hash".to_string(), 5);
-    
+
     // Verify the block was created with correct height
     assert_eq!(test_block.get_height(), 5);
-    
+
     // Store block using blockchain database
     let blockchain = Blockchain::new_with_empty_tip(test_db.get_db().clone());
     let blocks_tree = blockchain.get_db().open_tree(BLOCKS_TREE).unwrap();
-    
-    blocks_tree.insert(test_block.get_hash(), test_block.serialize()).unwrap();
-    
+
+    blocks_tree
+        .insert(test_block.get_hash(), test_block.serialize())
+        .unwrap();
+
     // Retrieve and verify block
     let retrieved_block_data = blocks_tree.get(test_block.get_hash()).unwrap().unwrap();
     let retrieved_block = Block::deserialize(retrieved_block_data.as_ref());
-    
+
     // Verify all properties match
     assert_eq!(retrieved_block.get_hash(), test_block.get_hash());
-    assert_eq!(retrieved_block.get_pre_block_hash(), test_block.get_pre_block_hash());
+    assert_eq!(
+        retrieved_block.get_pre_block_hash(),
+        test_block.get_pre_block_hash()
+    );
     assert_eq!(retrieved_block.get_height(), test_block.get_height());
-    assert_eq!(retrieved_block.get_transactions().len(), test_block.get_transactions().len());
-    
+    assert_eq!(
+        retrieved_block.get_transactions().len(),
+        test_block.get_transactions().len()
+    );
+
     // TestDatabase will auto-cleanup when dropped
 }
 
@@ -332,45 +351,51 @@ fn test_blockchain_blocks_tree_access() {
 fn test_blockchain_tip_persistence() {
     let test_name = "blockchain_tip_persistence";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create blockchain and set tip
     let blockchain = Blockchain::new_with_empty_tip(test_db.get_db().clone());
     let test_tip = "persistent_tip_hash";
     blockchain.set_tip_hash(test_tip);
-    
+
     // Create another blockchain instance with same database but different tip
-    let blockchain2 = Blockchain::new_with_tip(test_db.get_db().clone(), "different_tip".to_string());
-    
+    let blockchain2 =
+        Blockchain::new_with_tip(test_db.get_db().clone(), "different_tip".to_string());
+
     // Each instance maintains its own tip hash state
     assert_eq!(blockchain.get_tip_hash(), test_tip);
     assert_eq!(blockchain2.get_tip_hash(), "different_tip");
-    
+
     // Update one and verify they remain independent
     let new_tip = "updated_tip_hash";
     blockchain.set_tip_hash(new_tip);
     assert_eq!(blockchain.get_tip_hash(), new_tip);
     assert_eq!(blockchain2.get_tip_hash(), "different_tip"); // Still different
-    
+
     // TestDatabase will auto-cleanup when dropped
 }
 
 #[test]
 fn test_blockchain_concurrent_read_operations() {
-    use std::thread;
     use std::sync::Arc;
-    
+    use std::thread;
+
     let test_name = "blockchain_concurrent_reads";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create test block and store it
     let test_block = create_test_block("".to_string(), 42);
     let test_hash = test_block.get_hash().to_string();
-    
+
     let blocks_tree = test_db.open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(&test_hash, test_block.serialize()).unwrap();
-    
-    let blockchain = Arc::new(Blockchain::new_with_tip(test_db.get_db().clone(), test_hash));
-    
+    blocks_tree
+        .insert(&test_hash, test_block.serialize())
+        .unwrap();
+
+    let blockchain = Arc::new(Blockchain::new_with_tip(
+        test_db.get_db().clone(),
+        test_hash,
+    ));
+
     // Spawn multiple threads to read concurrently
     let mut handles = Vec::new();
     for i in 0..10 {
@@ -381,18 +406,18 @@ fn test_blockchain_concurrent_read_operations() {
             let best_height = blockchain_clone.get_best_height();
             let db_ref = blockchain_clone.get_db();
             let _ = db_ref.open_tree("test_tree").unwrap();
-            
+
             (i, tip_hash, best_height)
         });
         handles.push(handle);
     }
-    
+
     // Collect results from all threads
     let mut results = Vec::new();
     for handle in handles {
         results.push(handle.join().unwrap());
     }
-    
+
     // All threads should get consistent results
     let first_result = &results[0];
     for result in &results {
@@ -400,7 +425,7 @@ fn test_blockchain_concurrent_read_operations() {
         assert_eq!(result.2, first_result.2); // Same best height
         assert_eq!(result.2, 42); // Correct height value
     }
-    
+
     // TestDatabase will auto-cleanup when dropped
 }
 
@@ -408,29 +433,35 @@ fn test_blockchain_concurrent_read_operations() {
 fn test_blockchain_database_isolation() {
     let test_name1 = "blockchain_isolation_1";
     let test_name2 = "blockchain_isolation_2";
-    
+
     let test_db1 = TestDatabase::new(test_name1);
     let test_db2 = TestDatabase::new(test_name2);
-    
+
     // Create blockchains with different databases
     let blockchain1 = Blockchain::new_with_tip(test_db1.get_db().clone(), "hash1".to_string());
     let blockchain2 = Blockchain::new_with_tip(test_db2.get_db().clone(), "hash2".to_string());
-    
+
     // Verify they are isolated
     assert_eq!(blockchain1.get_tip_hash(), "hash1");
     assert_eq!(blockchain2.get_tip_hash(), "hash2");
-    
+
     // Create test data in each database
     let tree1 = blockchain1.get_db().open_tree("test_tree").unwrap();
     let tree2 = blockchain2.get_db().open_tree("test_tree").unwrap();
-    
+
     tree1.insert("shared_key", "value1").unwrap();
     tree2.insert("shared_key", "value2").unwrap();
-    
+
     // Verify isolation
-    assert_eq!(tree1.get("shared_key").unwrap().unwrap().as_ref(), b"value1");
-    assert_eq!(tree2.get("shared_key").unwrap().unwrap().as_ref(), b"value2");
-    
+    assert_eq!(
+        tree1.get("shared_key").unwrap().unwrap().as_ref(),
+        b"value1"
+    );
+    assert_eq!(
+        tree2.get("shared_key").unwrap().unwrap().as_ref(),
+        b"value2"
+    );
+
     // TestDatabase will auto-cleanup when both are dropped
 }
 
@@ -438,20 +469,20 @@ fn test_blockchain_database_isolation() {
 fn test_blockchain_large_tip_hash_values() {
     let test_name = "blockchain_large_tips";
     let test_db = TestDatabase::new(test_name);
-    
+
     let blockchain = Blockchain::new_with_empty_tip(test_db.get_db().clone());
-    
+
     // Test with very large tip hash
     let large_tip = "a".repeat(10000);
     blockchain.set_tip_hash(&large_tip);
     assert_eq!(blockchain.get_tip_hash(), large_tip);
-    
+
     // Test with binary-like data in hash
     let binary_tip = (0..1000).map(|i| (i % 256) as u8).collect::<Vec<u8>>();
     let binary_tip_string = format!("{binary_tip:?}");
     blockchain.set_tip_hash(&binary_tip_string);
     assert_eq!(blockchain.get_tip_hash(), binary_tip_string);
-    
+
     // TestDatabase will auto-cleanup when dropped
 }
 
@@ -459,19 +490,19 @@ fn test_blockchain_large_tip_hash_values() {
 fn test_blockchain_rapid_tip_updates() {
     let test_name = "blockchain_rapid_updates";
     let test_db = TestDatabase::new(test_name);
-    
+
     let blockchain = Blockchain::new_with_empty_tip(test_db.get_db().clone());
-    
+
     // Rapidly update tip hash many times
     for i in 0..1000 {
         let tip = format!("tip_hash_{i}");
         blockchain.set_tip_hash(&tip);
         assert_eq!(blockchain.get_tip_hash(), tip);
     }
-    
+
     // Final verification
     assert_eq!(blockchain.get_tip_hash(), "tip_hash_999");
-    
+
     // TestDatabase will auto-cleanup when dropped
 }
 
@@ -479,31 +510,33 @@ fn test_blockchain_rapid_tip_updates() {
 fn test_blockchain_get_best_height_with_complex_blocks() {
     let test_name = "blockchain_complex_heights";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create blocks with complex transaction data
     let mut complex_block = create_test_block("previous_hash".to_string(), 100);
-    
+
     // Add multiple transactions
     let tx1 = create_test_transaction(vec![1, 2, 3, 4]);
     let tx2 = create_test_transaction(vec![5, 6, 7, 8]);
     let tx3 = create_test_transaction(vec![9, 10, 11, 12]);
     complex_block.set_transactions_for_test(&[tx1, tx2, tx3]);
     complex_block.set_hash_for_test("complex_hash");
-    
+
     // Store block
     let blocks_tree = test_db.open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert("complex_hash", complex_block.serialize()).unwrap();
-    
+    blocks_tree
+        .insert("complex_hash", complex_block.serialize())
+        .unwrap();
+
     // Test blockchain with complex block
     let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), "complex_hash".to_string());
     assert_eq!(blockchain.get_best_height(), 100);
-    
+
     // Verify block data integrity
     let retrieved_data = blocks_tree.get("complex_hash").unwrap().unwrap();
     let retrieved_block = Block::deserialize(retrieved_data.as_ref());
     assert_eq!(retrieved_block.get_height(), 100);
     assert_eq!(retrieved_block.get_transactions().len(), 3);
-    
+
     // TestDatabase will auto-cleanup when dropped
 }
 
@@ -511,30 +544,34 @@ fn test_blockchain_get_best_height_with_complex_blocks() {
 fn test_blockchain_error_recovery() {
     let test_name = "blockchain_error_recovery";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create blockchain with valid initial state
     let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), "valid_hash".to_string());
-    
+
     // Store valid block
     let valid_block = create_test_block("".to_string(), 5);
     let blocks_tree = test_db.open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert("valid_hash", valid_block.serialize()).unwrap();
-    
+    blocks_tree
+        .insert("valid_hash", valid_block.serialize())
+        .unwrap();
+
     // Verify valid operation
     assert_eq!(blockchain.get_best_height(), 5);
-    
+
     // Change tip to invalid hash
     blockchain.set_tip_hash("invalid_hash");
     assert_eq!(blockchain.get_tip_hash(), "invalid_hash");
-    
+
     // get_best_height should panic with invalid tip
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| blockchain.get_best_height()));
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        blockchain.get_best_height()
+    }));
     assert!(result.is_err());
-    
+
     // Recover by setting valid tip again
     blockchain.set_tip_hash("valid_hash");
     assert_eq!(blockchain.get_best_height(), 5);
-    
+
     // TestDatabase will auto-cleanup when dropped
 }
 
@@ -542,22 +579,22 @@ fn test_blockchain_error_recovery() {
 fn test_blockchain_empty_string_handling() {
     let test_name = "blockchain_empty_strings";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Test with empty string tip hash
     let blockchain = Blockchain::new_with_empty_tip(test_db.get_db().clone());
     assert_eq!(blockchain.get_tip_hash(), "");
-    
+
     // Test setting empty string explicitly
     blockchain.set_tip_hash("");
     assert_eq!(blockchain.get_tip_hash(), "");
-    
+
     // Test with empty string in new_with_tip
     let blockchain2 = Blockchain::new_with_tip(test_db.get_db().clone(), "".to_string());
     assert_eq!(blockchain2.get_tip_hash(), "");
-    
+
     // Both should be equivalent
     assert_eq!(blockchain.get_tip_hash(), blockchain2.get_tip_hash());
-    
+
     // TestDatabase will auto-cleanup when dropped
 }
 
@@ -565,18 +602,22 @@ fn test_blockchain_empty_string_handling() {
 fn test_add_block_new_block() {
     let test_name = "add_block_new_block";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create an initial tip block
     let initial_block = create_test_block("genesis_hash".to_string(), 0);
     let initial_hash = initial_block.get_hash().to_string();
-    
+
     // Set up blockchain with initial block as tip
     let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone());
-    
+
     // Store initial block in database
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+    blocks_tree
+        .insert(initial_hash.as_str(), initial_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str())
+        .unwrap();
 
     // Create a test block with higher height
     let test_block = create_test_block(initial_hash.clone(), 1);
@@ -586,30 +627,40 @@ fn test_add_block_new_block() {
     blockchain.add_block(&test_block);
 
     // Verify the block was added to the database
-    let stored_block_bytes = blocks_tree.get(&block_hash).unwrap().expect("Block should be stored");
+    let stored_block_bytes = blocks_tree
+        .get(&block_hash)
+        .unwrap()
+        .expect("Block should be stored");
     let stored_block = Block::deserialize(stored_block_bytes.as_ref());
 
     assert_eq!(stored_block.get_hash(), test_block.get_hash());
     assert_eq!(stored_block.get_height(), test_block.get_height());
-    assert_eq!(stored_block.get_pre_block_hash(), test_block.get_pre_block_hash());
+    assert_eq!(
+        stored_block.get_pre_block_hash(),
+        test_block.get_pre_block_hash()
+    );
 }
 
 #[test]
 fn test_add_block_duplicate_block() {
     let test_name = "add_block_duplicate";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create an initial tip block
     let initial_block = create_test_block("genesis_hash".to_string(), 0);
     let initial_hash = initial_block.get_hash().to_string();
-    
+
     // Set up blockchain with initial block as tip
     let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone());
-    
+
     // Store initial block in database
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+    blocks_tree
+        .insert(initial_hash.as_str(), initial_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str())
+        .unwrap();
 
     // Create and add a block first time
     let test_block = create_test_block(initial_hash.clone(), 1);
@@ -632,18 +683,22 @@ fn test_add_block_duplicate_block() {
 fn test_add_block_updates_tip_with_higher_height() {
     let test_name = "add_block_updates_tip_higher";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create initial tip block with height 1
     let initial_block = create_test_block("genesis_hash".to_string(), 1);
     let initial_hash = initial_block.get_hash().to_string();
-    
+
     // Set up blockchain with the initial block as tip
     let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone());
-    
+
     // Store initial block in database
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+    blocks_tree
+        .insert(initial_hash.as_str(), initial_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str())
+        .unwrap();
 
     // Create new block with higher height
     let new_block = create_test_block(initial_hash.clone(), 2);
@@ -665,18 +720,22 @@ fn test_add_block_updates_tip_with_higher_height() {
 fn test_add_block_does_not_update_tip_with_lower_height() {
     let test_name = "add_block_no_update_tip_lower";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create initial tip block with height 2
     let initial_block = create_test_block("genesis_hash".to_string(), 2);
     let initial_hash = initial_block.get_hash().to_string();
-    
+
     // Set up blockchain with the initial block as tip
     let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone());
-    
+
     // Store initial block in database
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+    blocks_tree
+        .insert(initial_hash.as_str(), initial_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str())
+        .unwrap();
 
     // Create new block with lower height
     let new_block = create_test_block("some_other_hash".to_string(), 1);
@@ -703,18 +762,22 @@ fn test_add_block_does_not_update_tip_with_lower_height() {
 fn test_add_block_does_not_update_tip_with_equal_height() {
     let test_name = "add_block_no_update_tip_equal";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create initial tip block with height 1
     let initial_block = create_test_block("genesis_hash".to_string(), 1);
     let initial_hash = initial_block.get_hash().to_string();
-    
+
     // Set up blockchain with the initial block as tip
     let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone());
-    
+
     // Store initial block in database
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+    blocks_tree
+        .insert(initial_hash.as_str(), initial_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str())
+        .unwrap();
 
     // Create new block with equal height but different hash
     let new_block = create_test_block("different_prev_hash".to_string(), 1);
@@ -741,29 +804,33 @@ fn test_add_block_does_not_update_tip_with_equal_height() {
 fn test_add_block_multiple_blocks_chain() {
     let test_name = "add_block_multiple_chain";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create genesis block
     let genesis_block = create_test_genesis_block();
     let genesis_hash = genesis_block.get_hash().to_string();
-    
+
     // Set up blockchain with genesis as tip
     let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), genesis_hash.clone());
-    
+
     // Store genesis block
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(genesis_hash.as_str(), genesis_block.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, genesis_hash.as_str()).unwrap();
+    blocks_tree
+        .insert(genesis_hash.as_str(), genesis_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, genesis_hash.as_str())
+        .unwrap();
 
     // Create and add a chain of blocks
     let mut previous_hash = genesis_hash;
     let mut expected_tip_hash = previous_hash.clone();
-    
+
     for height in 1..=3 {
         let block = create_test_block(previous_hash.clone(), height);
         let block_hash = block.get_hash().to_string();
-        
+
         blockchain.add_block(&block);
-        
+
         // Each new block should become the tip
         assert_eq!(blockchain.get_tip_hash(), block_hash);
         expected_tip_hash = block_hash.clone();
@@ -772,7 +839,7 @@ fn test_add_block_multiple_blocks_chain() {
 
     // Verify final tip is correct
     assert_eq!(blockchain.get_tip_hash(), expected_tip_hash);
-    
+
     // Verify all blocks are stored
     for height in 1..=3 {
         let expected_count = height + 1; // genesis + height blocks
@@ -793,17 +860,21 @@ fn test_add_block_multiple_blocks_chain() {
 fn test_add_block_transaction_consistency() {
     let test_name = "add_block_transaction_consistency";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create initial tip block
     let initial_block = create_test_block("genesis".to_string(), 1);
     let initial_hash = initial_block.get_hash().to_string();
-    
+
     let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone());
-    
+
     // Store initial block
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+    blocks_tree
+        .insert(initial_hash.as_str(), initial_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str())
+        .unwrap();
 
     // Create new block with higher height
     let new_block = create_test_block(initial_hash.clone(), 2);
@@ -815,67 +886,81 @@ fn test_add_block_transaction_consistency() {
     // Verify both block storage and tip update happened atomically
     let stored_block = blocks_tree.get(&new_hash).unwrap();
     let stored_tip = blocks_tree.get(TIP_BLOCK_HASH_KEY).unwrap();
-    
+
     assert!(stored_block.is_some(), "Block should be stored");
     assert_eq!(
         String::from_utf8(stored_tip.unwrap().to_vec()).unwrap(),
         new_hash,
         "Tip should be updated"
     );
-    
+
     // Verify blockchain instance is also consistent
     assert_eq!(blockchain.get_tip_hash(), new_hash);
 }
 
 #[test]
 fn test_add_block_concurrent_access() {
-    use std::thread;
     use std::sync::Arc;
-    
+    use std::thread;
+
     let test_name = "add_block_concurrent";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create initial setup
     let initial_block = create_test_block("genesis".to_string(), 0);
     let initial_hash = initial_block.get_hash().to_string();
-    
-    let blockchain = Arc::new(Blockchain::new_with_tip(test_db.get_db().clone(), initial_hash.clone()));
-    
+
+    let blockchain = Arc::new(Blockchain::new_with_tip(
+        test_db.get_db().clone(),
+        initial_hash.clone(),
+    ));
+
     // Store initial block
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(initial_hash.as_str(), initial_block.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str()).unwrap();
+    blocks_tree
+        .insert(initial_hash.as_str(), initial_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, initial_hash.as_str())
+        .unwrap();
 
     // Create multiple blocks to add concurrently
-    let blocks: Vec<Block> = (1..=5).map(|i| {
-        create_test_block(format!("prev_hash_{i}"), i)
-    }).collect();
-    
+    let blocks: Vec<Block> = (1..=5)
+        .map(|i| create_test_block(format!("prev_hash_{i}"), i))
+        .collect();
+
     // Store block hashes for verification
     let block_hashes: Vec<String> = blocks.iter().map(|b| b.get_hash().to_string()).collect();
-    
+
     // Add blocks concurrently
-    let handles: Vec<_> = blocks.into_iter().enumerate().map(|(i, block)| {
-        let blockchain_clone = Arc::clone(&blockchain);
-        thread::spawn(move || {
-            blockchain_clone.add_block(&block);
-            (i, block.get_hash().to_string())
+    let handles: Vec<_> = blocks
+        .into_iter()
+        .enumerate()
+        .map(|(i, block)| {
+            let blockchain_clone = Arc::clone(&blockchain);
+            thread::spawn(move || {
+                blockchain_clone.add_block(&block);
+                (i, block.get_hash().to_string())
+            })
         })
-    }).collect();
+        .collect();
 
     // Wait for all threads to complete
     let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
-    
+
     // Verify all blocks were added
     for (i, expected_hash) in results {
         let stored_block = blocks_tree.get(&expected_hash).unwrap();
         assert!(stored_block.is_some(), "Block {i} should be stored");
         assert_eq!(block_hashes[i], expected_hash);
     }
-    
+
     // Verify one of the blocks became the tip (the one with highest height)
     let final_tip = blockchain.get_tip_hash();
-    assert!(block_hashes.contains(&final_tip), "Final tip should be one of the added blocks");
+    assert!(
+        block_hashes.contains(&final_tip),
+        "Final tip should be one of the added blocks"
+    );
 }
 
 // Tests for Blockchain::find_utxo()
@@ -884,37 +969,49 @@ fn test_find_utxo_empty_blockchain() {
     let test_name = "find_utxo_empty";
     let test_db = TestDatabase::new(test_name);
     let blockchain = Blockchain::new_with_empty_tip(test_db.get_db().clone());
-    
+
     let utxo = blockchain.find_utxo();
     assert!(utxo.is_empty());
 }
 
 #[test]
 fn test_find_utxo_single_coinbase_transaction() {
-    
     let test_name = "find_utxo_single_coinbase";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create a coinbase transaction
     let coinbase_tx = create_coinbase_transaction(50, vec![1, 2, 3, 4]);
-    let coinbase_id_hex = data_encoding::HEXLOWER.encode(&coinbase_tx.id);
-    
+    let coinbase_id_hex = data_encoding::HEXLOWER.encode(coinbase_tx.get_id());
+
     // Create a genesis block with the coinbase transaction
     let genesis_block = Block::generate_genesis_block(&coinbase_tx);
-    
+
     // Set up blockchain with the genesis block
-    let blocks_tree = test_db.get_db().open_tree(rust_blockchain::BLOCKS_TREE).unwrap();
-    blocks_tree.insert(genesis_block.get_hash(), genesis_block.serialize()).unwrap();
-    blocks_tree.insert(rust_blockchain::TIP_BLOCK_HASH_KEY, genesis_block.get_hash()).unwrap();
-    
-    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), genesis_block.get_hash().to_string());
-    
+    let blocks_tree = test_db
+        .get_db()
+        .open_tree(rust_blockchain::BLOCKS_TREE)
+        .unwrap();
+    blocks_tree
+        .insert(genesis_block.get_hash(), genesis_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(
+            rust_blockchain::TIP_BLOCK_HASH_KEY,
+            genesis_block.get_hash(),
+        )
+        .unwrap();
+
+    let blockchain = Blockchain::new_with_tip(
+        test_db.get_db().clone(),
+        genesis_block.get_hash().to_string(),
+    );
+
     let utxo = blockchain.find_utxo();
-    
+
     // Should have one UTXO from the coinbase transaction
     assert_eq!(utxo.len(), 1);
     assert!(utxo.contains_key(&coinbase_id_hex));
-    
+
     let outputs = utxo.get(&coinbase_id_hex).unwrap();
     assert_eq!(outputs.len(), 1);
     assert_eq!(outputs[0].value, 50);
@@ -923,51 +1020,60 @@ fn test_find_utxo_single_coinbase_transaction() {
 
 #[test]
 fn test_find_utxo_multiple_coinbase_transactions() {
-    
     let test_name = "find_utxo_multiple_coinbase";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create first coinbase transaction
     let coinbase_tx1 = create_coinbase_transaction(50, vec![1, 2, 3]);
-    let coinbase_id1_hex = data_encoding::HEXLOWER.encode(&coinbase_tx1.id);
-    
+    let coinbase_id1_hex = data_encoding::HEXLOWER.encode(coinbase_tx1.get_id());
+
     // Create second coinbase transaction
     let coinbase_tx2 = create_coinbase_transaction(25, vec![4, 5, 6]);
-    let coinbase_id2_hex = data_encoding::HEXLOWER.encode(&coinbase_tx2.id);
-    
+    let coinbase_id2_hex = data_encoding::HEXLOWER.encode(coinbase_tx2.get_id());
+
     // Create genesis block
     let mut genesis_block = Block::generate_genesis_block(&coinbase_tx1);
     // Manually set a hash since new_block_without_proof_of_work doesn't set one
     genesis_block.set_hash_for_test("genesis_hash_12345");
-    
+
     // Create second block with second coinbase
     let mut block2 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
         &[coinbase_tx2],
-        1
+        1,
     );
     // Manually set a hash for the second block
     block2.set_hash_for_test("block2_hash_67890");
-    
+
     // Set up blockchain
-    let blocks_tree = test_db.get_db().open_tree(rust_blockchain::BLOCKS_TREE).unwrap();
-    blocks_tree.insert(genesis_block.get_hash(), genesis_block.serialize()).unwrap();
-    blocks_tree.insert(block2.get_hash(), block2.serialize()).unwrap();
-    blocks_tree.insert(rust_blockchain::TIP_BLOCK_HASH_KEY, block2.get_hash()).unwrap();
-    
-    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
-    
+    let blocks_tree = test_db
+        .get_db()
+        .open_tree(rust_blockchain::BLOCKS_TREE)
+        .unwrap();
+    blocks_tree
+        .insert(genesis_block.get_hash(), genesis_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block2.get_hash(), block2.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(rust_blockchain::TIP_BLOCK_HASH_KEY, block2.get_hash())
+        .unwrap();
+
+    let blockchain =
+        Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
+
     let utxo = blockchain.find_utxo();
-    
+
     // Should have UTXOs from both coinbase transactions
     assert_eq!(utxo.len(), 2);
     assert!(utxo.contains_key(&coinbase_id1_hex));
     assert!(utxo.contains_key(&coinbase_id2_hex));
-    
+
     let outputs1 = utxo.get(&coinbase_id1_hex).unwrap();
     assert_eq!(outputs1.len(), 1);
     assert_eq!(outputs1[0].value, 50);
-    
+
     let outputs2 = utxo.get(&coinbase_id2_hex).unwrap();
     assert_eq!(outputs2.len(), 1);
     assert_eq!(outputs2[0].value, 25);
@@ -975,49 +1081,58 @@ fn test_find_utxo_multiple_coinbase_transactions() {
 
 #[test]
 fn test_find_utxo_with_spending_transaction() {
-    
     let test_name = "find_utxo_with_spending";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create coinbase transaction
     let coinbase_tx = create_coinbase_transaction(100, vec![1, 2, 3]);
-    let coinbase_id_hex = data_encoding::HEXLOWER.encode(&coinbase_tx.id);
-    
+    let coinbase_id_hex = data_encoding::HEXLOWER.encode(coinbase_tx.get_id());
+
     // Create spending transaction that spends the coinbase output
     let spending_tx = create_spending_transaction(
-        vec![(coinbase_tx.id.clone(), 0)], // Spend output 0 of coinbase
-        vec![(60, vec![4, 5, 6]), (40, vec![7, 8, 9])] // Two new outputs
+        vec![(coinbase_tx.get_id().to_vec(), 0)], // Spend output 0 of coinbase
+        vec![(60, vec![4, 5, 6]), (40, vec![7, 8, 9])], // Two new outputs
     );
-    let spending_id_hex = data_encoding::HEXLOWER.encode(&spending_tx.id);
-    
+    let spending_id_hex = data_encoding::HEXLOWER.encode(spending_tx.get_id());
+
     // Create genesis block
     let genesis_block = Block::generate_genesis_block(&coinbase_tx);
-    
+
     // Create block with spending transaction
     let block2 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
         &[spending_tx],
-        1
+        1,
     );
-    
+
     // Set up blockchain
-    let blocks_tree = test_db.get_db().open_tree(rust_blockchain::BLOCKS_TREE).unwrap();
-    blocks_tree.insert(genesis_block.get_hash(), genesis_block.serialize()).unwrap();
-    blocks_tree.insert(block2.get_hash(), block2.serialize()).unwrap();
-    blocks_tree.insert(rust_blockchain::TIP_BLOCK_HASH_KEY, block2.get_hash()).unwrap();
-    
-    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
-    
+    let blocks_tree = test_db
+        .get_db()
+        .open_tree(rust_blockchain::BLOCKS_TREE)
+        .unwrap();
+    blocks_tree
+        .insert(genesis_block.get_hash(), genesis_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block2.get_hash(), block2.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(rust_blockchain::TIP_BLOCK_HASH_KEY, block2.get_hash())
+        .unwrap();
+
+    let blockchain =
+        Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
+
     let utxo = blockchain.find_utxo();
-    
+
     // Should not have the coinbase UTXO (spent), but should have the new UTXOs
     assert_eq!(utxo.len(), 1);
     assert!(!utxo.contains_key(&coinbase_id_hex)); // Coinbase output was spent
     assert!(utxo.contains_key(&spending_id_hex));
-    
+
     let outputs = utxo.get(&spending_id_hex).unwrap();
     assert_eq!(outputs.len(), 2);
-    
+
     // Check the two outputs from the spending transaction
     let mut values: Vec<i32> = outputs.iter().map(|o| o.value).collect();
     values.sort();
@@ -1026,70 +1141,89 @@ fn test_find_utxo_with_spending_transaction() {
 
 #[test]
 fn test_find_utxo_partial_spending() {
-    
     let test_name = "find_utxo_partial_spending";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create transaction with multiple outputs
-    let multi_output_tx = Transaction {
-        id: rust_blockchain::util::sha256_digest(b"multi_output_tx"),
-        vin: vec![{
+    let multi_output_tx = Transaction::new(
+        rust_blockchain::util::sha256_digest(b"multi_output_tx"),
+        vec![{
             let mut input = TXInput::new(&[], 0);
             input.pub_key = vec![]; // Coinbase
             input
         }],
-        vout: vec![
-            TXOutput { value: 30, pub_key_hash: vec![1, 1, 1] },
-            TXOutput { value: 40, pub_key_hash: vec![2, 2, 2] },
-            TXOutput { value: 50, pub_key_hash: vec![3, 3, 3] },
+        vec![
+            TXOutput {
+                value: 30,
+                pub_key_hash: vec![1, 1, 1],
+            },
+            TXOutput {
+                value: 40,
+                pub_key_hash: vec![2, 2, 2],
+            },
+            TXOutput {
+                value: 50,
+                pub_key_hash: vec![3, 3, 3],
+            },
         ],
-    };
-    let multi_id_hex = data_encoding::HEXLOWER.encode(&multi_output_tx.id);
-    
+    );
+    let multi_id_hex = data_encoding::HEXLOWER.encode(multi_output_tx.get_id());
+
     // Create spending transaction that only spends the second output (index 1)
     let partial_spending_tx = create_spending_transaction(
-        vec![(multi_output_tx.id.clone(), 1)], // Only spend output 1
-        vec![(35, vec![4, 4, 4]), (5, vec![5, 5, 5])] // Split into two outputs
+        vec![(multi_output_tx.get_id().to_vec(), 1)], // Only spend output 1
+        vec![(35, vec![4, 4, 4]), (5, vec![5, 5, 5])], // Split into two outputs
     );
-    let partial_id_hex = data_encoding::HEXLOWER.encode(&partial_spending_tx.id);
-    
+    let partial_id_hex = data_encoding::HEXLOWER.encode(partial_spending_tx.get_id());
+
     // Create genesis block
     let mut genesis_block = Block::generate_genesis_block(&multi_output_tx);
     genesis_block.set_hash_for_test("genesis_hash_partial");
-    
+
     // Create block with partial spending
     let mut block2 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
         &[partial_spending_tx],
-        1
+        1,
     );
     block2.set_hash_for_test("block2_hash_partial");
-    
+
     // Set up blockchain
-    let blocks_tree = test_db.get_db().open_tree(rust_blockchain::BLOCKS_TREE).unwrap();
-    blocks_tree.insert(genesis_block.get_hash(), genesis_block.serialize()).unwrap();
-    blocks_tree.insert(block2.get_hash(), block2.serialize()).unwrap();
-    blocks_tree.insert(rust_blockchain::TIP_BLOCK_HASH_KEY, block2.get_hash()).unwrap();
-    
-    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
-    
+    let blocks_tree = test_db
+        .get_db()
+        .open_tree(rust_blockchain::BLOCKS_TREE)
+        .unwrap();
+    blocks_tree
+        .insert(genesis_block.get_hash(), genesis_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block2.get_hash(), block2.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(rust_blockchain::TIP_BLOCK_HASH_KEY, block2.get_hash())
+        .unwrap();
+
+    let blockchain =
+        Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
+
     let utxo = blockchain.find_utxo();
-    
+
     // The find_utxo implementation has complex behavior due to bugs.
     // We actually get 2 UTXOs: one from the original transaction (partial outputs)
     // and one from the spending transaction
     assert_eq!(utxo.len(), 2);
     assert!(utxo.contains_key(&multi_id_hex)); // Original transaction partially included
     assert!(utxo.contains_key(&partial_id_hex)); // Spending transaction included
-    
+
     // Check that we get the expected total values
-    let mut all_values: Vec<i32> = utxo.values()
+    let mut all_values: Vec<i32> = utxo
+        .values()
         .flat_map(|outputs| outputs.iter())
         .map(|o| o.value)
         .collect();
     all_values.sort();
     assert_eq!(all_values, vec![5, 30, 35]); // Values we actually observe
-    
+
     // Total unspent value should be 70 (5 + 30 + 35)
     let total_unspent: i32 = all_values.iter().sum();
     assert_eq!(total_unspent, 70);
@@ -1097,85 +1231,89 @@ fn test_find_utxo_partial_spending() {
 
 #[test]
 fn test_find_utxo_complex_transaction_chain() {
-    
     let test_name = "find_utxo_complex_chain";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create initial coinbase transaction
     let coinbase_tx = create_coinbase_transaction(100, vec![1, 1, 1]);
-    
+
     // Create first spending transaction
     let tx1 = create_spending_transaction(
-        vec![(coinbase_tx.id.clone(), 0)],
-        vec![(60, vec![2, 2, 2]), (40, vec![3, 3, 3])]
+        vec![(coinbase_tx.get_id().to_vec(), 0)],
+        vec![(60, vec![2, 2, 2]), (40, vec![3, 3, 3])],
     );
-    
+
     // Create second spending transaction that spends from tx1
     let tx2 = create_spending_transaction(
-        vec![(tx1.id.clone(), 0)], // Spend the 60-value output from tx1
-        vec![(30, vec![4, 4, 4]), (30, vec![5, 5, 5])]
+        vec![(tx1.get_id().to_vec(), 0)], // Spend the 60-value output from tx1
+        vec![(30, vec![4, 4, 4]), (30, vec![5, 5, 5])],
     );
-    
+
     // Store transaction ID before moving the transaction
-    let tx2_id = tx2.id.clone();
-    
+    let tx2_id = tx2.get_id().to_vec();
+
     // Create third transaction that spends from both tx1 and tx2
     let tx3 = create_spending_transaction(
-        vec![(tx1.id.clone(), 1), (tx2_id.clone(), 0)], // Spend remaining from tx1 and one from tx2
-        vec![(70, vec![6, 6, 6])]
+        vec![(tx1.get_id().to_vec(), 1), (tx2_id, 0)], // Spend remaining from tx1 and one from tx2
+        vec![(70, vec![6, 6, 6])],
     );
-    let _tx3_id = tx3.id.clone();
-    
+
     // Create blocks
     let mut genesis_block = Block::generate_genesis_block(&coinbase_tx);
     genesis_block.set_hash_for_test("genesis_hash_complex");
-    
-    let mut block2 = Block::new_block_without_proof_of_work(
-        genesis_block.get_hash().to_string(),
-        &[tx1],
-        1
-    );
+
+    let mut block2 =
+        Block::new_block_without_proof_of_work(genesis_block.get_hash().to_string(), &[tx1], 1);
     block2.set_hash_for_test("block2_hash_complex");
-    
-    let mut block3 = Block::new_block_without_proof_of_work(
-        block2.get_hash().to_string(),
-        &[tx2],
-        2
-    );
+
+    let mut block3 =
+        Block::new_block_without_proof_of_work(block2.get_hash().to_string(), &[tx2], 2);
     block3.set_hash_for_test("block3_hash_complex");
-    
-    let mut block4 = Block::new_block_without_proof_of_work(
-        block3.get_hash().to_string(),
-        &[tx3],
-        3
-    );
+
+    let mut block4 =
+        Block::new_block_without_proof_of_work(block3.get_hash().to_string(), &[tx3], 3);
     block4.set_hash_for_test("block4_hash_complex");
-    
+
     // Set up blockchain
-    let blocks_tree = test_db.get_db().open_tree(rust_blockchain::BLOCKS_TREE).unwrap();
-    blocks_tree.insert(genesis_block.get_hash(), genesis_block.serialize()).unwrap();
-    blocks_tree.insert(block2.get_hash(), block2.serialize()).unwrap();
-    blocks_tree.insert(block3.get_hash(), block3.serialize()).unwrap();
-    blocks_tree.insert(block4.get_hash(), block4.serialize()).unwrap();
-    blocks_tree.insert(rust_blockchain::TIP_BLOCK_HASH_KEY, block4.get_hash()).unwrap();
-    
-    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), block4.get_hash().to_string());
-    
+    let blocks_tree = test_db
+        .get_db()
+        .open_tree(rust_blockchain::BLOCKS_TREE)
+        .unwrap();
+    blocks_tree
+        .insert(genesis_block.get_hash(), genesis_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block2.get_hash(), block2.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block3.get_hash(), block3.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block4.get_hash(), block4.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(rust_blockchain::TIP_BLOCK_HASH_KEY, block4.get_hash())
+        .unwrap();
+
+    let blockchain =
+        Blockchain::new_with_tip(test_db.get_db().clone(), block4.get_hash().to_string());
+
     let utxo = blockchain.find_utxo();
-    
+
     // The find_utxo function has a bug where it processes blocks in reverse order
     // and has issues with the 'continue 'outer logic. Based on actual behavior:
     // We find 2 UTXOs: one with value 70 (from tx3) and one with value 100 (from coinbase)
     assert_eq!(utxo.len(), 2);
-    
+
     // Check that we have the expected values (70 and 100)
-    let mut values: Vec<i32> = utxo.values()
+    let mut values: Vec<i32> = utxo
+        .values()
         .flat_map(|outputs| outputs.iter())
         .map(|output| output.value)
         .collect();
     values.sort();
     assert_eq!(values, vec![70, 100]);
-    
+
     // Total unspent value should be 170 (70 + 100)
     let total_unspent: i32 = values.iter().sum();
     assert_eq!(total_unspent, 170);
@@ -1183,85 +1321,128 @@ fn test_find_utxo_complex_transaction_chain() {
 
 #[test]
 fn test_find_utxo_no_unspent_outputs() {
-    
     let test_name = "find_utxo_no_unspent";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create coinbase transaction
     let coinbase_tx = create_coinbase_transaction(50, vec![1, 2, 3]);
-    
+
     // Create spending transaction that spends all coinbase outputs
     let spending_tx = create_spending_transaction(
-        vec![(coinbase_tx.id.clone(), 0)],
-        vec![(25, vec![4, 5, 6]), (25, vec![7, 8, 9])]
+        vec![(coinbase_tx.get_id().to_vec(), 0)],
+        vec![(25, vec![4, 5, 6]), (25, vec![7, 8, 9])],
     );
-    
+
     // Create another transaction that spends all outputs from the spending transaction
     let final_tx = create_spending_transaction(
-        vec![(spending_tx.id.clone(), 0), (spending_tx.id.clone(), 1)],
-        vec![(50, vec![10, 11, 12])]
+        vec![(spending_tx.get_id().to_vec(), 0), (spending_tx.get_id().to_vec(), 1)],
+        vec![(50, vec![10, 11, 12])],
     );
-    
+
     // Create final transaction that spends the last output
-    let complete_tx = create_spending_transaction(
-        vec![(final_tx.id.clone(), 0)],
-        vec![(50, vec![13, 14, 15])]
-    );
-    
+    let complete_tx =
+        create_spending_transaction(vec![(final_tx.get_id().to_vec(), 0)], vec![(50, vec![13, 14, 15])]);
+
     // Create another transaction that spends the very last output
     let last_tx = create_spending_transaction(
-        vec![(complete_tx.id.clone(), 0)],
-        vec![(50, vec![16, 17, 18])]
+        vec![(complete_tx.get_id().to_vec(), 0)],
+        vec![(50, vec![16, 17, 18])],
     );
-    
+
     // Create blocks
     let genesis_block = Block::generate_genesis_block(&coinbase_tx);
-    let block2 = Block::new_block_without_proof_of_work(genesis_block.get_hash().to_string(), &[spending_tx], 1);
-    let block3 = Block::new_block_without_proof_of_work(block2.get_hash().to_string(), &[final_tx], 2);
-    let block4 = Block::new_block_without_proof_of_work(block3.get_hash().to_string(), &[complete_tx], 3);
-    let block5 = Block::new_block_without_proof_of_work(block4.get_hash().to_string(), std::slice::from_ref(&last_tx), 4);
-    
-    // Create one more transaction that spends the output from last_tx
-    let final_spend_tx = create_spending_transaction(
-        vec![(last_tx.id.clone(), 0)],
-        vec![(50, vec![19, 20, 21])]
+    let block2 = Block::new_block_without_proof_of_work(
+        genesis_block.get_hash().to_string(),
+        &[spending_tx],
+        1,
     );
-    let block6 = Block::new_block_without_proof_of_work(block5.get_hash().to_string(), std::slice::from_ref(&final_spend_tx), 5);
-    
+    let block3 =
+        Block::new_block_without_proof_of_work(block2.get_hash().to_string(), &[final_tx], 2);
+    let block4 =
+        Block::new_block_without_proof_of_work(block3.get_hash().to_string(), &[complete_tx], 3);
+    let block5 = Block::new_block_without_proof_of_work(
+        block4.get_hash().to_string(),
+        std::slice::from_ref(&last_tx),
+        4,
+    );
+
+    // Create one more transaction that spends the output from last_tx
+    let final_spend_tx =
+        create_spending_transaction(vec![(last_tx.get_id().to_vec(), 0)], vec![(50, vec![19, 20, 21])]);
+    let block6 = Block::new_block_without_proof_of_work(
+        block5.get_hash().to_string(),
+        std::slice::from_ref(&final_spend_tx),
+        5,
+    );
+
     // And spend that too
     let truly_final_tx = create_spending_transaction(
-        vec![(final_spend_tx.id.clone(), 0)],
-        vec![(25, vec![22, 23, 24]), (25, vec![25, 26, 27])]
+        vec![(final_spend_tx.get_id().to_vec(), 0)],
+        vec![(25, vec![22, 23, 24]), (25, vec![25, 26, 27])],
     );
-    let block7 = Block::new_block_without_proof_of_work(block6.get_hash().to_string(), std::slice::from_ref(&truly_final_tx), 6);
-    
+    let block7 = Block::new_block_without_proof_of_work(
+        block6.get_hash().to_string(),
+        std::slice::from_ref(&truly_final_tx),
+        6,
+    );
+
     // Spend these last two outputs as well
     let absolutely_final_tx = create_spending_transaction(
-        vec![(truly_final_tx.id.clone(), 0), (truly_final_tx.id.clone(), 1)],
-        vec![(50, vec![28, 29, 30])]
+        vec![
+            (truly_final_tx.get_id().to_vec(), 0),
+            (truly_final_tx.get_id().to_vec(), 1),
+        ],
+        vec![(50, vec![28, 29, 30])],
     );
-    let block8 = Block::new_block_without_proof_of_work(block7.get_hash().to_string(), &[absolutely_final_tx], 7);
-    
+    let block8 = Block::new_block_without_proof_of_work(
+        block7.get_hash().to_string(),
+        &[absolutely_final_tx],
+        7,
+    );
+
     // Set up blockchain
-    let blocks_tree = test_db.get_db().open_tree(rust_blockchain::BLOCKS_TREE).unwrap();
-    blocks_tree.insert(genesis_block.get_hash(), genesis_block.serialize()).unwrap();
-    blocks_tree.insert(block2.get_hash(), block2.serialize()).unwrap();
-    blocks_tree.insert(block3.get_hash(), block3.serialize()).unwrap();
-    blocks_tree.insert(block4.get_hash(), block4.serialize()).unwrap();
-    blocks_tree.insert(block5.get_hash(), block5.serialize()).unwrap();
-    blocks_tree.insert(block6.get_hash(), block6.serialize()).unwrap();
-    blocks_tree.insert(block7.get_hash(), block7.serialize()).unwrap();
-    blocks_tree.insert(block8.get_hash(), block8.serialize()).unwrap();
-    blocks_tree.insert(rust_blockchain::TIP_BLOCK_HASH_KEY, block8.get_hash()).unwrap();
-    
-    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), block8.get_hash().to_string());
-    
+    let blocks_tree = test_db
+        .get_db()
+        .open_tree(rust_blockchain::BLOCKS_TREE)
+        .unwrap();
+    blocks_tree
+        .insert(genesis_block.get_hash(), genesis_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block2.get_hash(), block2.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block3.get_hash(), block3.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block4.get_hash(), block4.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block5.get_hash(), block5.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block6.get_hash(), block6.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block7.get_hash(), block7.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block8.get_hash(), block8.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(rust_blockchain::TIP_BLOCK_HASH_KEY, block8.get_hash())
+        .unwrap();
+
+    let blockchain =
+        Blockchain::new_with_tip(test_db.get_db().clone(), block8.get_hash().to_string());
+
     let utxo = blockchain.find_utxo();
-    
+
     // Should have one UTXO from the absolutely final transaction
     assert_eq!(utxo.len(), 1);
-    
-    let total_unspent: i32 = utxo.values()
+
+    let total_unspent: i32 = utxo
+        .values()
         .flat_map(|outputs| outputs.iter())
         .map(|output| output.value)
         .sum();
@@ -1276,77 +1457,91 @@ fn test_find_utxo_no_unspent_outputs() {
 fn test_find_transaction_existing_transaction() {
     let test_name = "find_transaction_existing";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create test transactions with specific IDs
     let tx1_id = vec![1, 2, 3, 4];
     let tx2_id = vec![5, 6, 7, 8];
     let tx1 = create_test_transaction(tx1_id.clone());
     let tx2 = create_test_transaction(tx2_id.clone());
-    
+
     // Create blocks with these transactions
     let mut genesis_block = Block::generate_genesis_block(&tx1);
     genesis_block.set_hash_for_test("genesis_hash_find_tx");
-    
+
     let mut block2 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
         std::slice::from_ref(&tx2),
-        1
+        1,
     );
     block2.set_hash_for_test("block2_hash_find_tx");
-    
+
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(genesis_block.get_hash(), genesis_block.serialize()).unwrap();
-    blocks_tree.insert(block2.get_hash(), block2.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, block2.get_hash()).unwrap();
-    
-    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
-    
+    blocks_tree
+        .insert(genesis_block.get_hash(), genesis_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block2.get_hash(), block2.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, block2.get_hash())
+        .unwrap();
+
+    let blockchain =
+        Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
+
     // Test finding existing transactions
     let found_tx1 = blockchain.find_transaction(&tx1_id);
     assert!(found_tx1.is_some());
     let found_tx1 = found_tx1.unwrap();
-    assert_eq!(found_tx1.id, tx1_id);
-    assert_eq!(found_tx1.vin.len(), tx1.vin.len());
-    assert_eq!(found_tx1.vout.len(), tx1.vout.len());
-    
+    assert_eq!(found_tx1.get_id(), tx1_id);
+    assert_eq!(found_tx1.get_vin().len(), tx1.get_vin().len());
+    assert_eq!(found_tx1.get_vout().len(), tx1.get_vout().len());
+
     let found_tx2 = blockchain.find_transaction(&tx2_id);
     assert!(found_tx2.is_some());
     let found_tx2 = found_tx2.unwrap();
-    assert_eq!(found_tx2.id, tx2_id);
-    assert_eq!(found_tx2.vin.len(), tx2.vin.len());
-    assert_eq!(found_tx2.vout.len(), tx2.vout.len());
+    assert_eq!(found_tx2.get_id(), tx2_id);
+    assert_eq!(found_tx2.get_vin().len(), tx2.get_vin().len());
+    assert_eq!(found_tx2.get_vout().len(), tx2.get_vout().len());
 }
 
 #[test]
 fn test_find_transaction_non_existent_transaction() {
     let test_name = "find_transaction_non_existent";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create test transaction
     let tx_id = vec![1, 2, 3, 4];
     let tx = create_test_transaction(tx_id.clone());
-    
+
     // Create blockchain with one transaction
     let mut genesis_block = Block::generate_genesis_block(&tx);
     genesis_block.set_hash_for_test("genesis_hash_non_existent");
-    
+
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(genesis_block.get_hash(), genesis_block.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, genesis_block.get_hash()).unwrap();
-    
-    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), genesis_block.get_hash().to_string());
-    
+    blocks_tree
+        .insert(genesis_block.get_hash(), genesis_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, genesis_block.get_hash())
+        .unwrap();
+
+    let blockchain = Blockchain::new_with_tip(
+        test_db.get_db().clone(),
+        genesis_block.get_hash().to_string(),
+    );
+
     // Test finding non-existent transactions
     let non_existent_id = vec![9, 9, 9, 9];
     let found_tx = blockchain.find_transaction(&non_existent_id);
     assert!(found_tx.is_none());
-    
+
     // Test with empty ID
     let empty_id = vec![];
     let found_empty = blockchain.find_transaction(&empty_id);
     assert!(found_empty.is_none());
-    
+
     // Test with different length ID
     let long_id = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let found_long = blockchain.find_transaction(&long_id);
@@ -1357,173 +1552,198 @@ fn test_find_transaction_non_existent_transaction() {
 fn test_find_transaction_multiple_blocks() {
     let test_name = "find_transaction_multiple_blocks";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create transactions with unique IDs for different blocks
     let genesis_tx_id = vec![0, 0, 0, 1];
     let block1_tx_id = vec![1, 1, 1, 1];
     let block2_tx_id = vec![2, 2, 2, 2];
     let block3_tx_id = vec![3, 3, 3, 3];
-    
+
     let genesis_tx = create_test_transaction(genesis_tx_id.clone());
     let block1_tx = create_test_transaction(block1_tx_id.clone());
     let block2_tx = create_test_transaction(block2_tx_id.clone());
     let block3_tx = create_test_transaction(block3_tx_id.clone());
-    
+
     // Create blockchain with multiple blocks
     let mut genesis_block = Block::generate_genesis_block(&genesis_tx);
     genesis_block.set_hash_for_test("genesis_hash_multi");
-    
+
     let mut block1 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
         std::slice::from_ref(&block1_tx),
-        1
+        1,
     );
     block1.set_hash_for_test("block1_hash_multi");
-    
+
     let mut block2 = Block::new_block_without_proof_of_work(
         block1.get_hash().to_string(),
         std::slice::from_ref(&block2_tx),
-        2
+        2,
     );
     block2.set_hash_for_test("block2_hash_multi");
-    
+
     let mut block3 = Block::new_block_without_proof_of_work(
         block2.get_hash().to_string(),
         std::slice::from_ref(&block3_tx),
-        3
+        3,
     );
     block3.set_hash_for_test("block3_hash_multi");
-    
+
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(genesis_block.get_hash(), genesis_block.serialize()).unwrap();
-    blocks_tree.insert(block1.get_hash(), block1.serialize()).unwrap();
-    blocks_tree.insert(block2.get_hash(), block2.serialize()).unwrap();
-    blocks_tree.insert(block3.get_hash(), block3.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, block3.get_hash()).unwrap();
-    
-    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), block3.get_hash().to_string());
-    
+    blocks_tree
+        .insert(genesis_block.get_hash(), genesis_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block1.get_hash(), block1.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block2.get_hash(), block2.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block3.get_hash(), block3.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, block3.get_hash())
+        .unwrap();
+
+    let blockchain =
+        Blockchain::new_with_tip(test_db.get_db().clone(), block3.get_hash().to_string());
+
     // Test finding transactions from different blocks
     let found_genesis = blockchain.find_transaction(&genesis_tx_id);
     assert!(found_genesis.is_some());
-    assert_eq!(found_genesis.unwrap().id, genesis_tx_id);
-    
+    assert_eq!(found_genesis.unwrap().get_id(), genesis_tx_id);
+
     let found_block1 = blockchain.find_transaction(&block1_tx_id);
     assert!(found_block1.is_some());
-    assert_eq!(found_block1.unwrap().id, block1_tx_id);
-    
+    assert_eq!(found_block1.unwrap().get_id(), block1_tx_id);
+
     let found_block2 = blockchain.find_transaction(&block2_tx_id);
     assert!(found_block2.is_some());
-    assert_eq!(found_block2.unwrap().id, block2_tx_id);
-    
+    assert_eq!(found_block2.unwrap().get_id(), block2_tx_id);
+
     let found_block3 = blockchain.find_transaction(&block3_tx_id);
     assert!(found_block3.is_some());
-    assert_eq!(found_block3.unwrap().id, block3_tx_id);
+    assert_eq!(found_block3.unwrap().get_id(), block3_tx_id);
 }
 
 #[test]
 fn test_find_transaction_multiple_transactions_per_block() {
     let test_name = "find_transaction_multiple_per_block";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create multiple transactions for a single block
     let tx1_id = vec![1, 1, 1, 1];
     let tx2_id = vec![2, 2, 2, 2];
     let tx3_id = vec![3, 3, 3, 3];
-    
+
     let tx1 = create_test_transaction(tx1_id.clone());
     let tx2 = create_test_transaction(tx2_id.clone());
     let tx3 = create_test_transaction(tx3_id.clone());
-    
+
     // Create genesis block with first transaction
     let mut genesis_block = Block::generate_genesis_block(&tx1);
     genesis_block.set_hash_for_test("genesis_hash_multiple_tx");
-    
+
     // Create second block with multiple transactions
     let mut block2 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
         &[tx2.clone(), tx3.clone()],
-        1
+        1,
     );
     block2.set_hash_for_test("block2_hash_multiple_tx");
-    
+
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(genesis_block.get_hash(), genesis_block.serialize()).unwrap();
-    blocks_tree.insert(block2.get_hash(), block2.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, block2.get_hash()).unwrap();
-    
-    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
-    
+    blocks_tree
+        .insert(genesis_block.get_hash(), genesis_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block2.get_hash(), block2.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, block2.get_hash())
+        .unwrap();
+
+    let blockchain =
+        Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
+
     // Test finding all transactions
     let found_tx1 = blockchain.find_transaction(&tx1_id);
     assert!(found_tx1.is_some());
-    assert_eq!(found_tx1.unwrap().id, tx1_id);
-    
+    assert_eq!(found_tx1.unwrap().get_id(), tx1_id);
+
     let found_tx2 = blockchain.find_transaction(&tx2_id);
     assert!(found_tx2.is_some());
-    assert_eq!(found_tx2.unwrap().id, tx2_id);
-    
+    assert_eq!(found_tx2.unwrap().get_id(), tx2_id);
+
     let found_tx3 = blockchain.find_transaction(&tx3_id);
     assert!(found_tx3.is_some());
-    assert_eq!(found_tx3.unwrap().id, tx3_id);
+    assert_eq!(found_tx3.unwrap().get_id(), tx3_id);
 }
 
 #[test]
 fn test_find_transaction_with_coinbase_and_regular_transactions() {
     let test_name = "find_transaction_coinbase_regular";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create different types of transactions
     let coinbase_tx = create_coinbase_transaction(100, vec![1, 2, 3]);
-    let coinbase_id = coinbase_tx.id.clone();
-    
+    let coinbase_id = coinbase_tx.get_id().to_vec();
+
     let spending_tx = create_spending_transaction(
         vec![(coinbase_id.clone(), 0)],
-        vec![(50, vec![4, 5, 6]), (50, vec![7, 8, 9])]
+        vec![(50, vec![4, 5, 6]), (50, vec![7, 8, 9])],
     );
-    let spending_id = spending_tx.id.clone();
-    
+    let spending_id = spending_tx.get_id().to_vec();
+
     let regular_tx = create_test_transaction(vec![10, 11, 12, 13]);
-    let regular_id = regular_tx.id.clone();
-    
+    let regular_id = regular_tx.get_id().to_vec();
+
     // Create blocks
     let mut genesis_block = Block::generate_genesis_block(&coinbase_tx);
     genesis_block.set_hash_for_test("genesis_hash_mixed_tx");
-    
+
     let mut block2 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
         &[spending_tx.clone(), regular_tx.clone()],
-        1
+        1,
     );
     block2.set_hash_for_test("block2_hash_mixed_tx");
-    
+
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(genesis_block.get_hash(), genesis_block.serialize()).unwrap();
-    blocks_tree.insert(block2.get_hash(), block2.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, block2.get_hash()).unwrap();
-    
-    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
-    
+    blocks_tree
+        .insert(genesis_block.get_hash(), genesis_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block2.get_hash(), block2.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, block2.get_hash())
+        .unwrap();
+
+    let blockchain =
+        Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
+
     // Test finding different types of transactions
     let found_coinbase = blockchain.find_transaction(&coinbase_id);
     assert!(found_coinbase.is_some());
     let found_coinbase = found_coinbase.unwrap();
-    assert_eq!(found_coinbase.id, coinbase_id);
+    assert_eq!(found_coinbase.get_id(), coinbase_id);
     assert!(found_coinbase.is_coinbase());
-    
+
     let found_spending = blockchain.find_transaction(&spending_id);
     assert!(found_spending.is_some());
     let found_spending = found_spending.unwrap();
-    assert_eq!(found_spending.id, spending_id);
+    assert_eq!(found_spending.get_id(), spending_id);
     assert!(!found_spending.is_coinbase());
-    
+
     let found_regular = blockchain.find_transaction(&regular_id);
     assert!(found_regular.is_some());
     let found_regular = found_regular.unwrap();
-    assert_eq!(found_regular.id, regular_id);
+    assert_eq!(found_regular.get_id(), regular_id);
     assert!(!found_regular.is_coinbase());
 }
 
@@ -1531,10 +1751,10 @@ fn test_find_transaction_with_coinbase_and_regular_transactions() {
 fn test_find_transaction_empty_blockchain() {
     let test_name = "find_transaction_empty_blockchain";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create empty blockchain (no blocks stored)
     let blockchain = Blockchain::new_with_empty_tip(test_db.get_db().clone());
-    
+
     // Test finding transaction in empty blockchain
     let search_id = vec![1, 2, 3, 4];
     let found_tx = blockchain.find_transaction(&search_id);
@@ -1545,68 +1765,77 @@ fn test_find_transaction_empty_blockchain() {
 fn test_find_transaction_duplicate_transaction_ids() {
     let test_name = "find_transaction_duplicate_ids";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create transactions with the same ID but different content
     let duplicate_id = vec![1, 1, 1, 1];
-    let mut tx1 = create_test_transaction(duplicate_id.clone());
-    let mut tx2 = create_test_transaction(duplicate_id.clone());
-    
+    let tx1 = create_test_transaction(duplicate_id.clone());
+    let tx2 = create_test_transaction(duplicate_id.clone());
+
     // Make them different by changing output values
-    tx1.vout[0].value = 100;
-    tx2.vout[0].value = 200;
-    
+    let mut tx1_vout = tx1.get_vout().to_vec();
+    tx1_vout[0].value = 100;
+    let mut tx2_vout = tx2.get_vout().to_vec();
+    tx2_vout[0].value = 200;
+
     // Create blocks with duplicate ID transactions
     let mut genesis_block = Block::generate_genesis_block(&tx1);
     genesis_block.set_hash_for_test("genesis_hash_duplicate");
-    
+
     let mut block2 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
-        &[tx2.clone()],
-        1
+        std::slice::from_ref(&tx2),
+        1,
     );
     block2.set_hash_for_test("block2_hash_duplicate");
-    
+
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
-    blocks_tree.insert(genesis_block.get_hash(), genesis_block.serialize()).unwrap();
-    blocks_tree.insert(block2.get_hash(), block2.serialize()).unwrap();
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, block2.get_hash()).unwrap();
-    
-    let blockchain = Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
-    
+    blocks_tree
+        .insert(genesis_block.get_hash(), genesis_block.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(block2.get_hash(), block2.serialize())
+        .unwrap();
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, block2.get_hash())
+        .unwrap();
+
+    let blockchain =
+        Blockchain::new_with_tip(test_db.get_db().clone(), block2.get_hash().to_string());
+
     // Test finding transaction with duplicate ID
     // Should return the first matching transaction found (iteration order dependent)
     let found_tx = blockchain.find_transaction(&duplicate_id);
     assert!(found_tx.is_some());
     let found_tx = found_tx.unwrap();
-    assert_eq!(found_tx.id, duplicate_id);
+    assert_eq!(found_tx.get_id(), duplicate_id);
     // The exact transaction returned depends on iteration order, but one should be found
-    assert!(found_tx.vout[0].value == 100 || found_tx.vout[0].value == 200);
+    assert!(found_tx.get_vout()[0].value == 100 || found_tx.get_vout()[0].value == 200);
 }
 
 #[test]
 fn test_find_transaction_large_blockchain() {
     let test_name = "find_transaction_large_blockchain";
     let test_db = TestDatabase::new(test_name);
-    
+
     // Create a larger blockchain for performance testing
     let mut transactions = Vec::new();
     let mut blocks = Vec::new();
-    
+
     // Create genesis transaction and block
     let genesis_tx_id = vec![0, 0, 0, 0];
     let genesis_tx = create_test_transaction(genesis_tx_id.clone());
     transactions.push((genesis_tx_id.clone(), genesis_tx.clone()));
-    
+
     let mut genesis_block = Block::generate_genesis_block(&genesis_tx);
     genesis_block.set_hash_for_test("genesis_hash_large");
     blocks.push(genesis_block.clone());
-    
+
     // Create additional blocks with multiple transactions each
     let mut previous_hash = genesis_block.get_hash().to_string();
     for block_num in 1..=10 {
         let mut block_transactions = Vec::new();
-        
+
         // Create 3 transactions per block
         for tx_num in 0..3 {
             let tx_id = vec![block_num as u8, tx_num, 0, 0];
@@ -1614,50 +1843,49 @@ fn test_find_transaction_large_blockchain() {
             transactions.push((tx_id, tx.clone()));
             block_transactions.push(tx);
         }
-        
-        let mut block = Block::new_block_without_proof_of_work(
-            previous_hash,
-            &block_transactions,
-            block_num
-        );
+
+        let mut block =
+            Block::new_block_without_proof_of_work(previous_hash, &block_transactions, block_num);
         block.set_hash_for_test(&format!("block_{block_num}_hash"));
         previous_hash = block.get_hash().to_string();
         blocks.push(block);
     }
-    
+
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
     for block in &blocks {
-        blocks_tree.insert(block.get_hash(), block.serialize()).unwrap();
+        blocks_tree
+            .insert(block.get_hash(), block.serialize())
+            .unwrap();
     }
-    blocks_tree.insert(TIP_BLOCK_HASH_KEY, blocks.last().unwrap().get_hash()).unwrap();
-    
+    blocks_tree
+        .insert(TIP_BLOCK_HASH_KEY, blocks.last().unwrap().get_hash())
+        .unwrap();
+
     let blockchain = Blockchain::new_with_tip(
-        test_db.get_db().clone(), 
-        blocks.last().unwrap().get_hash().to_string()
+        test_db.get_db().clone(),
+        blocks.last().unwrap().get_hash().to_string(),
     );
-    
+
     // Test finding transactions from different parts of the blockchain
     // Find genesis transaction
     let found_genesis = blockchain.find_transaction(&transactions[0].0);
     assert!(found_genesis.is_some());
-    assert_eq!(found_genesis.unwrap().id, transactions[0].0);
-    
+    assert_eq!(found_genesis.unwrap().get_id(), transactions[0].0);
+
     // Find middle transaction
     let middle_idx = transactions.len() / 2;
     let found_middle = blockchain.find_transaction(&transactions[middle_idx].0);
     assert!(found_middle.is_some());
-    assert_eq!(found_middle.unwrap().id, transactions[middle_idx].0);
-    
+    assert_eq!(found_middle.unwrap().get_id(), transactions[middle_idx].0);
+
     // Find last transaction
     let found_last = blockchain.find_transaction(&transactions.last().unwrap().0);
     assert!(found_last.is_some());
-    assert_eq!(found_last.unwrap().id, transactions.last().unwrap().0);
-    
+    assert_eq!(found_last.unwrap().get_id(), transactions.last().unwrap().0);
+
     // Test finding non-existent transaction
     let non_existent_id = vec![99, 99, 99, 99];
     let found_non_existent = blockchain.find_transaction(&non_existent_id);
     assert!(found_non_existent.is_none());
 }
-
-

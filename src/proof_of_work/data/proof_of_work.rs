@@ -8,6 +8,6 @@ pub const TARGET_BITS: usize = 24;
 
 #[derive(Clone, bincode::Encode, bincode::Decode)]
 pub struct ProofOfWork {
-    pub block: Block,
-    pub target: BincodeBigInt,
+    pub(crate) block: Block,
+    pub(crate) target: BincodeBigInt,
 }

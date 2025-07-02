@@ -14,22 +14,16 @@ use tempfile::TempDir;
 /// This function was duplicated across block_tests.rs, blockchain_iterator_tests.rs,
 /// and proof_of_work_tests.rs with identical implementations.
 pub fn create_test_transaction(id: Vec<u8>) -> Transaction {
-    let tx_input = TXInput {
-        txid: vec![1, 2, 3],
-        vout: 0,
-        signature: vec![4, 5, 6],
-        pub_key: vec![7, 8, 9],
-    };
+    let mut tx_input = TXInput::new(&[1, 2, 3], 0);
+    tx_input.signature = vec![4, 5, 6];
+    tx_input.pub_key = vec![7, 8, 9];
+    
     let tx_output = TXOutput {
         value: 100,
         pub_key_hash: vec![10, 11, 12],
     };
 
-    Transaction {
-        id,
-        vin: vec![tx_input],
-        vout: vec![tx_output],
-    }
+    Transaction::new(id, vec![tx_input], vec![tx_output])
 }
 
 // =============================================================================
@@ -415,22 +409,19 @@ pub fn create_spending_transaction(
         });
     }
 
-    let mut transaction = Transaction {
-        id: vec![],
-        vin,
-        vout,
-    };
-
     // Generate a unique ID for the transaction
     let tx_data = format!(
         "spending_{}_{}_{}",
-        transaction.vin.len(),
-        transaction.vout.len(),
+        vin.len(),
+        vout.len(),
         rust_blockchain::util::current_timestamp()
     );
-    transaction.id = rust_blockchain::util::sha256_digest(tx_data.as_bytes());
 
-    transaction
+    Transaction::new(
+        rust_blockchain::util::sha256_digest(tx_data.as_bytes()),
+        vin,
+        vout,
+    )
 }
 
 // Helper function to create a coinbase transaction
@@ -443,22 +434,19 @@ pub fn create_coinbase_transaction(reward: i32, recipient_hash: Vec<u8>) -> Tran
         pub_key_hash: recipient_hash,
     };
 
-    let mut transaction = Transaction {
-        id: vec![],
-        vin: vec![coinbase_input],
-        vout: vec![coinbase_output],
-    };
-
     // Generate a unique ID for the transaction
     let tx_data = format!(
         "coinbase_{}_{}_{}",
         reward,
-        data_encoding::HEXLOWER.encode(&transaction.vout[0].pub_key_hash),
+        data_encoding::HEXLOWER.encode(&coinbase_output.pub_key_hash),
         rust_blockchain::util::current_timestamp()
     );
-    transaction.id = rust_blockchain::util::sha256_digest(tx_data.as_bytes());
 
-    transaction
+    Transaction::new(
+        rust_blockchain::util::sha256_digest(tx_data.as_bytes()),
+        vec![coinbase_input],
+        vec![coinbase_output],
+    )
 }
 
 // =============================================================================
@@ -485,10 +473,10 @@ mod tests {
         let tx = create_test_transaction(id.clone());
 
         assert_eq!(tx.get_id(), id.as_slice());
-        assert_eq!(tx.vin.len(), 1);
-        assert_eq!(tx.vout.len(), 1);
-        assert_eq!(tx.vin[0].get_txid(), &[1, 2, 3]);
-        assert_eq!(tx.vout[0].get_value(), 100);
+        assert_eq!(tx.get_vin().len(), 1);
+        assert_eq!(tx.get_vout().len(), 1);
+        assert_eq!(tx.get_vin()[0].get_txid(), &[1, 2, 3]);
+        assert_eq!(tx.get_vout()[0].get_value(), 100);
     }
 
     #[test]

@@ -3,5 +3,5 @@ use std::sync::RwLock;
 use crate::Node;
 
 pub struct Nodes {
-    pub inner: RwLock<Vec<Node>>,
+    pub(crate) inner: RwLock<Vec<Node>>,
 }

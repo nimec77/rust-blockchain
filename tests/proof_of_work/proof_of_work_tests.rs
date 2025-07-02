@@ -12,12 +12,12 @@ fn test_new_proof_of_work() {
 
     // Verify that the target is calculated correctly
     let expected_target = BigInt::from(1) << (256 - TARGET_BITS);
-    assert_eq!(*pow.target.as_bigint(), expected_target);
+    assert_eq!(*pow.get_target().as_bigint(), expected_target);
 
     // Verify that the block is stored correctly
-    assert_eq!(pow.block.get_pre_block_hash(), block.get_pre_block_hash());
-    assert_eq!(pow.block.get_timestamp(), block.get_timestamp());
-    assert_eq!(pow.block.get_height(), block.get_height());
+    assert_eq!(pow.get_block().get_pre_block_hash(), block.get_pre_block_hash());
+    assert_eq!(pow.get_block().get_timestamp(), block.get_timestamp());
+    assert_eq!(pow.get_block().get_height(), block.get_height());
 }
 
 #[test]
@@ -26,7 +26,7 @@ fn test_new_proof_of_work_target_calculation() {
     let pow = ProofOfWork::new_proof_of_work(block);
 
     // Test that target is a valid BigInt and has the expected magnitude
-    let target = pow.target.as_bigint();
+    let target = pow.get_target().as_bigint();
     assert!(target > &BigInt::from(0));
 
     // Target should be 2^(256-24) = 2^232
@@ -160,7 +160,7 @@ fn test_proof_of_work_clone() {
     let cloned_pow = pow.clone();
 
     // Verify that cloned instance behaves identically
-    assert_eq!(pow.target.as_bigint(), cloned_pow.target.as_bigint());
+    assert_eq!(pow.get_target().as_bigint(), cloned_pow.get_target().as_bigint());
     assert_eq!(pow.validate(), cloned_pow.validate());
 
     let data1 = pow.prepare_data(42);
@@ -174,12 +174,12 @@ fn test_proof_of_work_serialization() {
     let pow = ProofOfWork::new_proof_of_work(block);
 
     // Test that the contained block can be serialized
-    let block_serialized = pow.block.serialize();
+    let block_serialized = pow.get_block().serialize();
     let block_deserialized = Block::deserialize(&block_serialized);
 
-    assert_eq!(pow.block.get_hash(), block_deserialized.get_hash());
-    assert_eq!(pow.block.get_pre_block_hash(), block_deserialized.get_pre_block_hash());
-    assert_eq!(pow.block.get_height(), block_deserialized.get_height());
+    assert_eq!(pow.get_block().get_hash(), block_deserialized.get_hash());
+    assert_eq!(pow.get_block().get_pre_block_hash(), block_deserialized.get_pre_block_hash());
+    assert_eq!(pow.get_block().get_height(), block_deserialized.get_height());
 }
 
 #[test]

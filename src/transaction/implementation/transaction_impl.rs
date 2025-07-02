@@ -1,8 +1,16 @@
 use bincode::config::standard;
 
-use crate::{transaction::Transaction, util::{ecdsa_p256_sha256_sign_verify, sha256_digest}, Blockchain, TXInput, TXOutput};
+use crate::{
+    Blockchain, TXInput, TXOutput,
+    transaction::Transaction,
+    util::{ecdsa_p256_sha256_sign_verify, sha256_digest},
+};
 
 impl Transaction {
+    pub fn new(id: Vec<u8>, vin: Vec<TXInput>, vout: Vec<TXOutput>) -> Transaction {
+        Transaction { id, vin, vout }
+    }
+
     pub fn get_id(&self) -> &[u8] {
         &self.id
     }

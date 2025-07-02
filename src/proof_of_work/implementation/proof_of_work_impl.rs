@@ -18,6 +18,14 @@ impl ProofOfWork {
         ProofOfWork { block, target }
     }
 
+    pub fn get_block(&self) -> &Block {
+        &self.block
+    }
+
+    pub fn get_target(&self) -> &BincodeBigInt {
+        &self.target
+    }
+
     /// Prepare data for hashing by combining block fields with nonce
     pub fn prepare_data(&self, nonce: i64) -> Vec<u8> {
         let mut data = Vec::new();

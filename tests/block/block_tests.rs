@@ -1,5 +1,5 @@
-use rust_blockchain::{Block, TXInput, TXOutput, Transaction, util};
 use crate::test_helpers::*;
+use rust_blockchain::{Block, TXInput, TXOutput, Transaction, util};
 
 #[ignore]
 #[test]
@@ -52,7 +52,10 @@ fn test_serialize_deserialize() {
     );
     assert_eq!(original_block.get_nonce(), deserialized_block.get_nonce());
     assert_eq!(original_block.get_height(), deserialized_block.get_height());
-    assert_eq!(original_block.get_timestamp(), deserialized_block.get_timestamp());
+    assert_eq!(
+        original_block.get_timestamp(),
+        deserialized_block.get_timestamp()
+    );
 }
 
 #[test]
@@ -628,11 +631,11 @@ fn test_large_transaction_data_without_proof_of_work() {
         pub_key_hash: vec![42u8; 1000], // 1KB hash
     };
 
-    let large_transaction = Transaction {
-        id: vec![200u8; 100],
-        vin: vec![large_tx_input],
-        vout: vec![large_tx_output],
-    };
+    let large_transaction = Transaction::new(
+        vec![200u8; 100],
+        vec![large_tx_input],
+        vec![large_tx_output],
+    );
 
     let transactions = vec![large_transaction];
     let block =

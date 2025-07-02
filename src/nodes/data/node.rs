@@ -1,4 +1,4 @@
 #[derive(Clone)]
 pub struct Node {
-    pub addr: String,
+    pub(crate) addr: String,
 }
