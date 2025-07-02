@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use rust_blockchain::{Block, TXInput, TXOutput, Transaction, BLOCKS_TREE};
+use rust_blockchain::{BLOCKS_TREE, Block, TXInput, TXOutput, Transaction};
 use sled::Db;
 use std::fs;
 use std::path::Path;
@@ -70,12 +70,17 @@ pub fn create_test_block(pre_hash: String, height: usize) -> Block {
     let transaction = create_test_transaction(vec![1, 2, 3, 4]);
     let transactions = vec![transaction];
     let mut block = Block::new_block_without_proof_of_work(pre_hash, &transactions, height);
-    
+
     // Generate a unique hash for each test block based on its contents
-    let hash_input = format!("{}|{}|{}", block.get_pre_block_hash(), block.get_height(), block.get_timestamp());
+    let hash_input = format!(
+        "{}|{}|{}",
+        block.get_pre_block_hash(),
+        block.get_height(),
+        block.get_timestamp()
+    );
     let hash_bytes = rust_blockchain::util::sha256_digest(hash_input.as_bytes());
     block.hash = data_encoding::HEXLOWER.encode(&hash_bytes);
-    
+
     block
 }
 
@@ -390,7 +395,10 @@ pub fn setup_test_db_with_blocks() -> (TestDatabase, Vec<Block>) {
 }
 
 // Helper function to create a regular transaction that spends UTXOs
-pub fn create_spending_transaction(inputs: Vec<(Vec<u8>, usize)>, outputs: Vec<(i32, Vec<u8>)>) -> Transaction {
+pub fn create_spending_transaction(
+    inputs: Vec<(Vec<u8>, usize)>,
+    outputs: Vec<(i32, Vec<u8>)>,
+) -> Transaction {
     let mut vin = Vec::new();
     for (txid, vout_idx) in inputs {
         let mut tx_input = TXInput::new(&txid, vout_idx);
@@ -398,7 +406,7 @@ pub fn create_spending_transaction(inputs: Vec<(Vec<u8>, usize)>, outputs: Vec<(
         tx_input.signature = vec![4, 5, 6]; // Mock signature
         vin.push(tx_input);
     }
-    
+
     let mut vout = Vec::new();
     for (value, pub_key_hash) in outputs {
         vout.push(TXOutput {
@@ -406,21 +414,22 @@ pub fn create_spending_transaction(inputs: Vec<(Vec<u8>, usize)>, outputs: Vec<(
             pub_key_hash,
         });
     }
-    
+
     let mut transaction = Transaction {
         id: vec![],
         vin,
         vout,
     };
-    
+
     // Generate a unique ID for the transaction
-    let tx_data = format!("spending_{}_{}_{}", 
-        transaction.vin.len(), 
-        transaction.vout.len(), 
+    let tx_data = format!(
+        "spending_{}_{}_{}",
+        transaction.vin.len(),
+        transaction.vout.len(),
         rust_blockchain::util::current_timestamp()
     );
     transaction.id = rust_blockchain::util::sha256_digest(tx_data.as_bytes());
-    
+
     transaction
 }
 
@@ -428,23 +437,42 @@ pub fn create_spending_transaction(inputs: Vec<(Vec<u8>, usize)>, outputs: Vec<(
 pub fn create_coinbase_transaction(reward: i32, recipient_hash: Vec<u8>) -> Transaction {
     let mut coinbase_input = TXInput::new(&[], 0);
     coinbase_input.pub_key = vec![]; // Empty pub_key indicates coinbase
-    
+
     let coinbase_output = TXOutput {
         value: reward,
         pub_key_hash: recipient_hash,
     };
-    
+
     let mut transaction = Transaction {
         id: vec![],
         vin: vec![coinbase_input],
         vout: vec![coinbase_output],
     };
-    
+
     // Generate a unique ID for the transaction
-    let tx_data = format!("coinbase_{}_{}_{}", reward, data_encoding::HEXLOWER.encode(&transaction.vout[0].pub_key_hash), rust_blockchain::util::current_timestamp());
+    let tx_data = format!(
+        "coinbase_{}_{}_{}",
+        reward,
+        data_encoding::HEXLOWER.encode(&transaction.vout[0].pub_key_hash),
+        rust_blockchain::util::current_timestamp()
+    );
     transaction.id = rust_blockchain::util::sha256_digest(tx_data.as_bytes());
-    
+
     transaction
+}
+
+// =============================================================================
+// HELPER FUNCTIONS FOR MEMORY POOL TESTS
+// =============================================================================
+
+/// Creates multiple test transactions with different IDs
+pub fn create_multiple_test_transactions(count: usize) -> Vec<Transaction> {
+    let mut transactions = Vec::new();
+    for i in 0..count {
+        let id = vec![i as u8; 4]; // Create unique IDs
+        transactions.push(create_test_transaction(id));
+    }
+    transactions
 }
 
 #[cfg(test)]
