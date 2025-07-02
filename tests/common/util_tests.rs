@@ -861,8 +861,7 @@ fn test_ecdsa_p256_sha256_cross_verification() {
         let _public_key_i = key_pair_i.public_key().as_ref();
         let signature_i = ecdsa_p256_sha256_sign_digest(pkcs8_i.as_ref(), message);
         
-        for j in 0..key_pairs.len() {
-            let (_, ref key_pair_j) = key_pairs[j];
+        for (j, (_, key_pair_j)) in key_pairs.iter().enumerate() {
             let public_key_j = key_pair_j.public_key().as_ref();
             
             let is_valid = ecdsa_p256_sha256_sign_verify(public_key_j, &signature_i, message);

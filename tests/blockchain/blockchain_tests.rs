@@ -1289,7 +1289,7 @@ fn test_find_transaction_existing_transaction() {
     
     let mut block2 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
-        &[tx2.clone()],
+        std::slice::from_ref(&tx2),
         1
     );
     block2.hash = "block2_hash_find_tx".to_string();
@@ -1375,21 +1375,21 @@ fn test_find_transaction_multiple_blocks() {
     
     let mut block1 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
-        &[block1_tx.clone()],
+        std::slice::from_ref(&block1_tx),
         1
     );
     block1.hash = "block1_hash_multi".to_string();
     
     let mut block2 = Block::new_block_without_proof_of_work(
         block1.get_hash().to_string(),
-        &[block2_tx.clone()],
+        std::slice::from_ref(&block2_tx),
         2
     );
     block2.hash = "block2_hash_multi".to_string();
     
     let mut block3 = Block::new_block_without_proof_of_work(
         block2.get_hash().to_string(),
-        &[block3_tx.clone()],
+        std::slice::from_ref(&block3_tx),
         3
     );
     block3.hash = "block3_hash_multi".to_string();
@@ -1620,7 +1620,7 @@ fn test_find_transaction_large_blockchain() {
             &block_transactions,
             block_num
         );
-        block.hash = format!("block_{}_hash", block_num);
+        block.hash = format!("block_{block_num}_hash");
         previous_hash = block.hash.clone();
         blocks.push(block);
     }

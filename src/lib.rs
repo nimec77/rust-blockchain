@@ -12,4 +12,4 @@ pub use transaction::{Transaction, TXInput, TXOutput};
 pub use proof_of_work::{ProofOfWork, MAX_NONCE, TARGET_BITS};
 pub use blockchain::{Blockchain, TIP_BLOCK_HASH_KEY, BLOCKS_TREE, BlockchainIterator};
 pub use common::BincodeBigInt;
-pub use nodes::Node;
+pub use nodes::{Node, Nodes};
