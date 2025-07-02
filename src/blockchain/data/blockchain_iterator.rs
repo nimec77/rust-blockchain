@@ -1,6 +1,6 @@
 use sled::Db;
 
 pub struct BlockchainIterator {
-    pub db: Db,
-    pub current_hash: String,
+    pub(crate) db: Db,
+    pub(crate) current_hash: String,
 }
