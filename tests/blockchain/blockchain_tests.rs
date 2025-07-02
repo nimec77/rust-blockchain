@@ -227,13 +227,13 @@ fn test_get_best_height() {
     
     // Create blocks with different heights
     let mut block1 = create_test_block("".to_string(), 0);
-    block1.set_hash("block1_hash");
+    block1.set_hash_for_test("block1_hash");
     
     let mut block2 = create_test_block("block1_hash".to_string(), 5);
-    block2.set_hash("block2_hash");
+    block2.set_hash_for_test("block2_hash");
     
     let mut block3 = create_test_block("block2_hash".to_string(), 10);
-    block3.set_hash("block3_hash");
+    block3.set_hash_for_test("block3_hash");
     
     // Store blocks in database
     let blocks_tree = test_db.open_tree(BLOCKS_TREE).unwrap();
@@ -487,8 +487,8 @@ fn test_blockchain_get_best_height_with_complex_blocks() {
     let tx1 = create_test_transaction(vec![1, 2, 3, 4]);
     let tx2 = create_test_transaction(vec![5, 6, 7, 8]);
     let tx3 = create_test_transaction(vec![9, 10, 11, 12]);
-    complex_block.set_transactions(&[tx1, tx2, tx3]);
-    complex_block.set_hash("complex_hash");
+    complex_block.set_transactions_for_test(&[tx1, tx2, tx3]);
+    complex_block.set_hash_for_test("complex_hash");
     
     // Store block
     let blocks_tree = test_db.open_tree(BLOCKS_TREE).unwrap();
@@ -938,7 +938,7 @@ fn test_find_utxo_multiple_coinbase_transactions() {
     // Create genesis block
     let mut genesis_block = Block::generate_genesis_block(&coinbase_tx1);
     // Manually set a hash since new_block_without_proof_of_work doesn't set one
-    genesis_block.set_hash("genesis_hash_12345");
+    genesis_block.set_hash_for_test("genesis_hash_12345");
     
     // Create second block with second coinbase
     let mut block2 = Block::new_block_without_proof_of_work(
@@ -947,7 +947,7 @@ fn test_find_utxo_multiple_coinbase_transactions() {
         1
     );
     // Manually set a hash for the second block
-    block2.set_hash("block2_hash_67890");
+    block2.set_hash_for_test("block2_hash_67890");
     
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(rust_blockchain::BLOCKS_TREE).unwrap();
@@ -1055,7 +1055,7 @@ fn test_find_utxo_partial_spending() {
     
     // Create genesis block
     let mut genesis_block = Block::generate_genesis_block(&multi_output_tx);
-    genesis_block.set_hash("genesis_hash_partial");
+    genesis_block.set_hash_for_test("genesis_hash_partial");
     
     // Create block with partial spending
     let mut block2 = Block::new_block_without_proof_of_work(
@@ -1063,7 +1063,7 @@ fn test_find_utxo_partial_spending() {
         &[partial_spending_tx],
         1
     );
-    block2.set_hash("block2_hash_partial");
+    block2.set_hash_for_test("block2_hash_partial");
     
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(rust_blockchain::BLOCKS_TREE).unwrap();
@@ -1128,28 +1128,28 @@ fn test_find_utxo_complex_transaction_chain() {
     
     // Create blocks
     let mut genesis_block = Block::generate_genesis_block(&coinbase_tx);
-    genesis_block.set_hash("genesis_hash_complex");
+    genesis_block.set_hash_for_test("genesis_hash_complex");
     
     let mut block2 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
         &[tx1],
         1
     );
-    block2.set_hash("block2_hash_complex");
+    block2.set_hash_for_test("block2_hash_complex");
     
     let mut block3 = Block::new_block_without_proof_of_work(
         block2.get_hash().to_string(),
         &[tx2],
         2
     );
-    block3.set_hash("block3_hash_complex");
+    block3.set_hash_for_test("block3_hash_complex");
     
     let mut block4 = Block::new_block_without_proof_of_work(
         block3.get_hash().to_string(),
         &[tx3],
         3
     );
-    block4.set_hash("block4_hash_complex");
+    block4.set_hash_for_test("block4_hash_complex");
     
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(rust_blockchain::BLOCKS_TREE).unwrap();
@@ -1285,14 +1285,14 @@ fn test_find_transaction_existing_transaction() {
     
     // Create blocks with these transactions
     let mut genesis_block = Block::generate_genesis_block(&tx1);
-    genesis_block.set_hash("genesis_hash_find_tx");
+    genesis_block.set_hash_for_test("genesis_hash_find_tx");
     
     let mut block2 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
         std::slice::from_ref(&tx2),
         1
     );
-    block2.set_hash("block2_hash_find_tx");
+    block2.set_hash_for_test("block2_hash_find_tx");
     
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
@@ -1329,7 +1329,7 @@ fn test_find_transaction_non_existent_transaction() {
     
     // Create blockchain with one transaction
     let mut genesis_block = Block::generate_genesis_block(&tx);
-    genesis_block.set_hash("genesis_hash_non_existent");
+    genesis_block.set_hash_for_test("genesis_hash_non_existent");
     
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
     blocks_tree.insert(genesis_block.get_hash(), genesis_block.serialize()).unwrap();
@@ -1371,28 +1371,28 @@ fn test_find_transaction_multiple_blocks() {
     
     // Create blockchain with multiple blocks
     let mut genesis_block = Block::generate_genesis_block(&genesis_tx);
-    genesis_block.set_hash("genesis_hash_multi");
+    genesis_block.set_hash_for_test("genesis_hash_multi");
     
     let mut block1 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
         std::slice::from_ref(&block1_tx),
         1
     );
-    block1.set_hash("block1_hash_multi");
+    block1.set_hash_for_test("block1_hash_multi");
     
     let mut block2 = Block::new_block_without_proof_of_work(
         block1.get_hash().to_string(),
         std::slice::from_ref(&block2_tx),
         2
     );
-    block2.set_hash("block2_hash_multi");
+    block2.set_hash_for_test("block2_hash_multi");
     
     let mut block3 = Block::new_block_without_proof_of_work(
         block2.get_hash().to_string(),
         std::slice::from_ref(&block3_tx),
         3
     );
-    block3.set_hash("block3_hash_multi");
+    block3.set_hash_for_test("block3_hash_multi");
     
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
@@ -1438,7 +1438,7 @@ fn test_find_transaction_multiple_transactions_per_block() {
     
     // Create genesis block with first transaction
     let mut genesis_block = Block::generate_genesis_block(&tx1);
-    genesis_block.set_hash("genesis_hash_multiple_tx");
+    genesis_block.set_hash_for_test("genesis_hash_multiple_tx");
     
     // Create second block with multiple transactions
     let mut block2 = Block::new_block_without_proof_of_work(
@@ -1446,7 +1446,7 @@ fn test_find_transaction_multiple_transactions_per_block() {
         &[tx2.clone(), tx3.clone()],
         1
     );
-    block2.set_hash("block2_hash_multiple_tx");
+    block2.set_hash_for_test("block2_hash_multiple_tx");
     
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
@@ -1490,14 +1490,14 @@ fn test_find_transaction_with_coinbase_and_regular_transactions() {
     
     // Create blocks
     let mut genesis_block = Block::generate_genesis_block(&coinbase_tx);
-    genesis_block.set_hash("genesis_hash_mixed_tx");
+    genesis_block.set_hash_for_test("genesis_hash_mixed_tx");
     
     let mut block2 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
         &[spending_tx.clone(), regular_tx.clone()],
         1
     );
-    block2.set_hash("block2_hash_mixed_tx");
+    block2.set_hash_for_test("block2_hash_mixed_tx");
     
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
@@ -1557,14 +1557,14 @@ fn test_find_transaction_duplicate_transaction_ids() {
     
     // Create blocks with duplicate ID transactions
     let mut genesis_block = Block::generate_genesis_block(&tx1);
-    genesis_block.set_hash("genesis_hash_duplicate");
+    genesis_block.set_hash_for_test("genesis_hash_duplicate");
     
     let mut block2 = Block::new_block_without_proof_of_work(
         genesis_block.get_hash().to_string(),
         &[tx2.clone()],
         1
     );
-    block2.set_hash("block2_hash_duplicate");
+    block2.set_hash_for_test("block2_hash_duplicate");
     
     // Set up blockchain
     let blocks_tree = test_db.get_db().open_tree(BLOCKS_TREE).unwrap();
@@ -1599,7 +1599,7 @@ fn test_find_transaction_large_blockchain() {
     transactions.push((genesis_tx_id.clone(), genesis_tx.clone()));
     
     let mut genesis_block = Block::generate_genesis_block(&genesis_tx);
-    genesis_block.set_hash("genesis_hash_large");
+    genesis_block.set_hash_for_test("genesis_hash_large");
     blocks.push(genesis_block.clone());
     
     // Create additional blocks with multiple transactions each
@@ -1620,7 +1620,7 @@ fn test_find_transaction_large_blockchain() {
             &block_transactions,
             block_num
         );
-        block.set_hash(&format!("block_{block_num}_hash"));
+        block.set_hash_for_test(&format!("block_{block_num}_hash"));
         previous_hash = block.get_hash().to_string();
         blocks.push(block);
     }

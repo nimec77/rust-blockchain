@@ -86,7 +86,7 @@ fn test_get_hash() {
     let transactions = vec![transaction];
 
     let mut block = Block::new_block_without_proof_of_work("test".to_string(), &transactions, 1);
-    block.set_hash("test_hash");
+    block.set_hash_for_test("test_hash");
 
     assert_eq!(block.get_hash(), "test_hash");
 }
@@ -97,7 +97,7 @@ fn test_get_hash_bytes() {
     let transactions = vec![transaction];
 
     let mut block = Block::new_block_without_proof_of_work("test".to_string(), &transactions, 1);
-    block.set_hash("test_hash");
+    block.set_hash_for_test("test_hash");
 
     let hash_bytes = block.get_hash_bytes();
     assert_eq!(hash_bytes, "test_hash".as_bytes().to_vec());
@@ -400,7 +400,7 @@ fn test_block_serialization_with_unicode_hash() {
         Block::new_block_without_proof_of_work("unicode_test".to_string(), &transactions, 3);
 
     // Test with ASCII hash
-    block.set_hash("simple_ascii_hash");
+    block.set_hash_for_test("simple_ascii_hash");
     let serialized = block.serialize();
     let deserialized = Block::deserialize(&serialized);
     assert_eq!(block.get_hash(), deserialized.get_hash());

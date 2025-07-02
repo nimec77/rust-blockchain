@@ -79,7 +79,7 @@ pub fn create_test_block(pre_hash: String, height: usize) -> Block {
         block.get_timestamp()
     );
     let hash_bytes = rust_blockchain::util::sha256_digest(hash_input.as_bytes());
-    block.set_hash(&data_encoding::HEXLOWER.encode(&hash_bytes));
+    block.set_hash_for_test(&data_encoding::HEXLOWER.encode(&hash_bytes));
 
     block
 }

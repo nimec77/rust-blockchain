@@ -335,10 +335,10 @@ fn test_iterator_with_large_hash_keys() {
     let large_hash2 = "b".repeat(5000);
     
     let mut block1 = create_test_block("".to_string(), 0);
-    block1.set_hash(&large_hash1);
+    block1.set_hash_for_test(&large_hash1);
     
     let mut block2 = create_test_block(large_hash1.clone(), 1);
-    block2.set_hash(&large_hash2);
+    block2.set_hash_for_test(&large_hash2);
     
     blocks_tree.insert(&large_hash1, block1.serialize()).unwrap();
     blocks_tree.insert(&large_hash2, block2.serialize()).unwrap();
@@ -366,7 +366,7 @@ fn test_iterator_with_empty_string_hash() {
     
     // Create a block with empty string hash
     let mut block = create_test_block("".to_string(), 0);
-    block.set_hash("");
+    block.set_hash_for_test("");
     
     blocks_tree.insert("", block.serialize()).unwrap();
     
@@ -428,7 +428,7 @@ fn test_iterator_with_special_characters_in_hash() {
     
     for (i, hash) in special_hashes.iter().enumerate() {
         let mut block = create_test_block(prev_hash.clone(), i);
-        block.set_hash(hash);
+        block.set_hash_for_test(hash);
         blocks_tree.insert(hash, block.serialize()).unwrap();
         blocks.push(block);
         prev_hash = hash.to_string();
@@ -497,7 +497,7 @@ fn test_iterator_with_corrupted_data() {
     
     // Create a block that points to the valid block but store corrupted data
     let mut corrupted_block = create_test_block(valid_block.get_hash().to_string(), 1);
-    corrupted_block.set_hash("corrupted_hash");
+    corrupted_block.set_hash_for_test("corrupted_hash");
     
     // Store valid block reference but corrupted serialized data
     blocks_tree.insert("corrupted_hash", b"definitely not a valid block").unwrap();

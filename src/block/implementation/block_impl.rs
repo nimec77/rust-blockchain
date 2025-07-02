@@ -56,7 +56,7 @@ impl Block {
         self.transactions.as_slice()
     }
 
-    pub fn set_transactions(&mut self, transactions: &[Transaction]) {
+    pub fn set_transactions_for_test(&mut self, transactions: &[Transaction]) {
         self.transactions = transactions.to_vec();
     }
 
@@ -68,7 +68,7 @@ impl Block {
         self.hash.as_str()
     }
 
-    pub fn set_hash(&mut self, hash: &str) {
+    pub fn set_hash_for_test(&mut self, hash: &str) {
         self.hash = hash.to_string();
     }
 
