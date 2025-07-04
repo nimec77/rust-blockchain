@@ -7,6 +7,7 @@ mod blockchain;
 pub mod nodes;
 pub mod memory_pool;
 pub mod config;
+pub mod utxo_set;
 
 // Convenience re-exports for commonly used types
 pub use block::Block;
@@ -16,3 +17,4 @@ pub use blockchain::{Blockchain, TIP_BLOCK_HASH_KEY, BLOCKS_TREE, BlockchainIter
 pub use common::BincodeBigInt;
 pub use nodes::{Node, Nodes};
 pub use memory_pool::MemoryPool;
+pub use utxo_set::{UTXOSet, UTXO_TREE};
