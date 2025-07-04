@@ -368,6 +368,7 @@ dependencies = [
  "bs58",
  "data-encoding",
  "num-bigint",
+ "once_cell",
  "ring",
  "rust-crypto",
  "sled",

@@ -6,6 +6,7 @@ pub mod util;
 mod blockchain;
 pub mod nodes;
 pub mod memory_pool;
+pub mod config;
 
 // Convenience re-exports for commonly used types
 pub use block::Block;

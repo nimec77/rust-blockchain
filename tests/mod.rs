@@ -1,6 +1,7 @@
 mod block;
 mod blockchain;
 mod common;
+mod config;
 mod memory_pool;
 mod nodes;
 mod proof_of_work;
