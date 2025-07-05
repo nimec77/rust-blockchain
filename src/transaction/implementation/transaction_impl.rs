@@ -1,14 +1,28 @@
 use bincode::config::standard;
+use uuid::Uuid;
 
 use crate::{
-    Blockchain, TXInput, TXOutput,
-    transaction::Transaction,
-    util::{ecdsa_p256_sha256_sign_verify, sha256_digest},
+    transaction::{data::transaction::SUBSIDY, Transaction}, util::{ecdsa_p256_sha256_sign_verify, sha256_digest}, Blockchain, TXInput, TXOutput
 };
 
 impl Transaction {
     pub fn new(id: Vec<u8>, vin: Vec<TXInput>, vout: Vec<TXOutput>) -> Transaction {
         Transaction { id, vin, vout }
+    }
+
+    pub fn new_coinbase_tx(to: &str) -> Transaction {
+        let txout = TXOutput::new(SUBSIDY, to);
+        let mut tx_input = TXInput::default();
+        tx_input.signature = Uuid::new_v4().as_bytes().to_vec();
+
+        let mut tx = Transaction {
+            id: vec![],
+            vin: vec![tx_input],
+            vout: vec![txout],
+        };
+
+        tx.id = tx.hash();
+        return tx;
     }
 
     pub fn get_id(&self) -> &[u8] {
@@ -95,5 +109,9 @@ impl Transaction {
         let (tx, _) = bincode::decode_from_slice(bytes, standard())?;
 
         Ok(tx)
+    }
+
+    pub fn get_id_bytes(&self) -> &[u8] {
+        &self.id
     }
 }

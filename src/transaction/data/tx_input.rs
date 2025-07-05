@@ -1,4 +1,4 @@
-#[derive(Clone, bincode::Encode, bincode::Decode)]
+#[derive(Clone, bincode::Encode, bincode::Decode, Default)]
 pub struct TXInput {
     pub txid: Vec<u8>,
     pub vout: usize,

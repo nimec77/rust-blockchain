@@ -179,4 +179,27 @@ impl Blockchain {
         }
         None
     }
+
+    pub fn get_block(&self, block_hash: &[u8]) -> Option<Block> {
+        let block_tree = self.db.open_tree(BLOCKS_TREE).unwrap();
+        if let Some(block_bytes) = block_tree.get(block_hash).unwrap() {
+            let block = Block::deserialize(block_bytes.as_ref());
+            return Some(block);
+        }
+        return None;
+    }
+
+    pub fn get_block_hashes(&self) -> Vec<Vec<u8>> {
+        let mut iterator = self.iterator();
+        let mut blocks = vec![];
+        loop {
+            let option = iterator.next();
+            if option.is_none() {
+                break;
+            }
+            let block = option.unwrap();
+            blocks.push(block.get_hash_bytes());
+        }
+        return blocks;
+    }
 }
