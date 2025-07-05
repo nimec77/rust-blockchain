@@ -1,6 +1,6 @@
 use std::{
-    io::{self, Read, Write},
-    net::{SocketAddr, TcpListener, TcpStream},
+    io::Write,
+    net::{TcpListener, TcpStream},
     sync::{Arc, Mutex},
     thread,
     time::Duration,
@@ -14,71 +14,6 @@ use rust_blockchain::{
 use crate::test_helpers::{
     create_test_block, create_test_transaction, setup_temp_test_db,
 };
-
-// Mock TCP stream for testing
-struct MockTcpStream {
-    read_data: Arc<Mutex<Vec<u8>>>,
-    write_data: Arc<Mutex<Vec<u8>>>,
-    read_pos: Arc<Mutex<usize>>,
-    peer_addr: SocketAddr,
-}
-
-impl MockTcpStream {
-    fn new(data: Vec<u8>) -> Self {
-        Self {
-            read_data: Arc::new(Mutex::new(data)),
-            write_data: Arc::new(Mutex::new(Vec::new())),
-            read_pos: Arc::new(Mutex::new(0)),
-            peer_addr: "127.0.0.1:3000".parse().unwrap(),
-        }
-    }
-
-    fn get_written_data(&self) -> Vec<u8> {
-        self.write_data.lock().unwrap().clone()
-    }
-}
-
-impl Read for MockTcpStream {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let data = self.read_data.lock().unwrap();
-        let mut pos = self.read_pos.lock().unwrap();
-        
-        if *pos >= data.len() {
-            return Ok(0); // EOF
-        }
-        
-        let available = data.len() - *pos;
-        let to_read = buf.len().min(available);
-        
-        buf[..to_read].copy_from_slice(&data[*pos..*pos + to_read]);
-        *pos += to_read;
-        
-        Ok(to_read)
-    }
-}
-
-impl Write for MockTcpStream {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let mut write_data = self.write_data.lock().unwrap();
-        write_data.extend_from_slice(buf);
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-// Mock implementation for TcpStream methods used in serve function
-impl MockTcpStream {
-    fn peer_addr(&self) -> io::Result<SocketAddr> {
-        Ok(self.peer_addr)
-    }
-
-    fn shutdown(&self, _how: std::net::Shutdown) -> io::Result<()> {
-        Ok(())
-    }
-}
 
 // Helper function to create a test blockchain
 fn create_test_blockchain() -> Blockchain {
@@ -253,7 +188,7 @@ fn test_central_node_detection() {
     clear_global_state();
     
     // Test non-central node (can't set node_addr, so test with current value)
-    let node_addr = GLOBAL_CONFIG.get_node_addr();
+    let _ = GLOBAL_CONFIG.get_node_addr();
     // Note: set_node_addr() method doesn't exist, so we can't modify it
     
     // Test central node constant
@@ -607,7 +542,7 @@ fn test_local_blocks_in_transit_operations() {
     assert_eq!(first_block.unwrap(), vec![1, 2, 3, 4, 5]);
     
     // Test removing blocks
-    blocks_in_transit.remove(&vec![1, 2, 3, 4, 5]);
+    blocks_in_transit.remove(&[1, 2, 3, 4, 5]);
     assert_eq!(blocks_in_transit.len(), 2);
     
     // Test clearing all blocks
@@ -716,11 +651,11 @@ fn test_comprehensive_package_handling() {
     for (name, package) in packages {
         // Test serialization
         let serialized = serialize_package(&package);
-        assert!(!serialized.is_empty(), "Failed to serialize {}", name);
+        assert!(!serialized.is_empty(), "Failed to serialize {name}");
         
         // Test deserialization
         let (deserialized, _): (Package, usize) = bincode::decode_from_slice(&serialized, standard())
-            .expect(&format!("Failed to deserialize {}", name));
+            .unwrap_or_else(|_| panic!("Failed to deserialize {name}"));
         
         // Verify the package type is preserved
         match (&package, &deserialized) {
@@ -730,7 +665,7 @@ fn test_comprehensive_package_handling() {
             (Package::Inv { .. }, Package::Inv { .. }) => (),
             (Package::Tx { .. }, Package::Tx { .. }) => (),
             (Package::Version { .. }, Package::Version { .. }) => (),
-            _ => panic!("Package type mismatch for {}: {:?} vs {:?}", name, package, deserialized),
+            _ => panic!("Package type mismatch for {name}: {package:?} vs {deserialized:?}"),
         }
     }
 } 

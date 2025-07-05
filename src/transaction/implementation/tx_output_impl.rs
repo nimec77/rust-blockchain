@@ -8,7 +8,8 @@ impl TXOutput {
             pub_key_hash: vec![],
         };
         output.lock(address);
-        return output;
+        
+        output
     }
 
     pub fn get_value(&self) -> i32 {

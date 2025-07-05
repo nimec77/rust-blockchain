@@ -186,7 +186,7 @@ impl Blockchain {
             let block = Block::deserialize(block_bytes.as_ref());
             return Some(block);
         }
-        return None;
+        None
     }
 
     pub fn get_block_hashes(&self) -> Vec<Vec<u8>> {
@@ -200,6 +200,6 @@ impl Blockchain {
             let block = option.unwrap();
             blocks.push(block.get_hash_bytes());
         }
-        return blocks;
+        blocks
     }
 }

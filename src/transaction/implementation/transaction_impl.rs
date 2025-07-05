@@ -12,8 +12,12 @@ impl Transaction {
 
     pub fn new_coinbase_tx(to: &str) -> Transaction {
         let txout = TXOutput::new(SUBSIDY, to);
-        let mut tx_input = TXInput::default();
-        tx_input.signature = Uuid::new_v4().as_bytes().to_vec();
+        let tx_input = TXInput {
+            txid: vec![],
+            vout: 0,
+            signature: Uuid::new_v4().as_bytes().to_vec(),
+            pub_key: vec![],
+        };
 
         let mut tx = Transaction {
             id: vec![],
@@ -22,7 +26,7 @@ impl Transaction {
         };
 
         tx.id = tx.hash();
-        return tx;
+        tx
     }
 
     pub fn get_id(&self) -> &[u8] {
