@@ -5,6 +5,7 @@ mod config;
 mod memory_pool;
 mod nodes;
 mod proof_of_work;
+mod server;
 mod test_helpers;
 mod transaction;
 mod utxo_set; 

@@ -367,6 +367,7 @@ dependencies = [
  "bincode",
  "bs58",
  "data-encoding",
+ "log",
  "num-bigint",
  "once_cell",
  "ring",
