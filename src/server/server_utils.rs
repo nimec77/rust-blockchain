@@ -20,7 +20,7 @@ use crate::{
     },
 };
 
-fn send_data(addr: SocketAddr, pkg: Package) {
+pub fn send_data(addr: SocketAddr, pkg: Package) {
     info!("send package: {:?}", &pkg);
     let stream = TcpStream::connect(addr);
     if stream.is_err() {
@@ -36,7 +36,7 @@ fn send_data(addr: SocketAddr, pkg: Package) {
     let _ = stream.flush();
 }
 
-fn send_inv(addr: &str, op_type: OpType, blocks: &[Vec<u8>]) {
+pub fn send_inv(addr: &str, op_type: OpType, blocks: &[Vec<u8>]) {
     let socket_addr = addr.parse().unwrap();
     let node_addr = GLOBAL_CONFIG.get_node_addr().parse().unwrap();
     send_data(
@@ -49,7 +49,7 @@ fn send_inv(addr: &str, op_type: OpType, blocks: &[Vec<u8>]) {
     );
 }
 
-fn send_block(addr: &str, block: &Block) {
+pub fn send_block(addr: &str, block: &Block) {
     let socket_addr = addr.parse().unwrap();
     let node_addr = GLOBAL_CONFIG.get_node_addr().parse().unwrap();
     send_data(
@@ -73,7 +73,7 @@ pub fn send_tx(addr: &str, tx: &Transaction) {
     );
 }
 
-pub(crate) fn send_version(addr: &str, height: usize) {
+pub fn send_version(addr: &str, height: usize) {
     let socket_addr = addr.parse().unwrap();
     let node_addr = GLOBAL_CONFIG.get_node_addr().parse().unwrap();
     send_data(
@@ -86,7 +86,7 @@ pub(crate) fn send_version(addr: &str, height: usize) {
     );
 }
 
-pub(crate) fn send_get_data(addr: &str, op_type: OpType, id: &[u8]) {
+pub fn send_get_data(addr: &str, op_type: OpType, id: &[u8]) {
     let socket_addr = addr.parse().unwrap();
     let node_addr = GLOBAL_CONFIG.get_node_addr().parse().unwrap();
     send_data(
@@ -99,7 +99,7 @@ pub(crate) fn send_get_data(addr: &str, op_type: OpType, id: &[u8]) {
     );
 }
 
-fn send_get_blocks(addr: &str) {
+pub fn send_get_blocks(addr: &str) {
     let socket_addr = addr.parse().unwrap();
     let node_addr = GLOBAL_CONFIG.get_node_addr().parse().unwrap();
     send_data(
@@ -110,7 +110,7 @@ fn send_get_blocks(addr: &str) {
     );
 }
 
-pub(crate) fn serve(blockchain: Blockchain, stream: TcpStream) -> Result<(), Box<dyn Error>> {
+pub fn serve(blockchain: Blockchain, stream: TcpStream) -> Result<(), Box<dyn Error>> {
     let peer_addr = stream.peer_addr()?;
     let mut reader = BufReader::new(&stream);
     loop {

@@ -10,5 +10,5 @@ pub const NODE_ADDRESS_KEY: &str = "NODE_ADDRESS";
 pub const MINING_ADDRESS_KEY: &str = "MINING_ADDRESS";
 
 pub struct Config {
-    pub(crate) inner: RwLock<HashMap<String, String>>,
+    pub inner: RwLock<HashMap<String, String>>,
 }
