@@ -8,6 +8,6 @@ pub const BLOCKS_TREE: &str = "blocks";
 
 #[derive(Clone)]
 pub struct Blockchain {
-    pub(crate) tip_hash: Arc<RwLock<String>>, // Optimized: Arc<str> instead of String
-    pub(crate) db: Db,
+    pub(in crate::blockchain) tip_hash: Arc<RwLock<String>>, // Optimized: Arc<str> instead of String
+    pub(in crate::blockchain) db: Db,
 }
