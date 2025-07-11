@@ -943,3 +943,318 @@ fn test_transaction_deserialize_vs_try_deserialize_consistency() {
         );
     }
 }
+
+// =============================================================================
+// NEW TXOUTPUT TESTS - MISSING FUNCTIONALITY
+// =============================================================================
+
+// Tests for TXOutput::new() method - This was completely missing!
+#[test]
+fn test_txoutput_new_with_valid_address() {
+    // Create a proper wallet address for testing
+    use rust_blockchain::wallet::wallet_util::convert_address;
+    
+    let pub_key_hash = b"test_pub_key_hash";
+    let address = convert_address(pub_key_hash);
+    let value = 100;
+    
+    let output = TXOutput::new(value, &address);
+    
+    assert_eq!(output.get_value(), value);
+    assert_eq!(output.get_pub_key_hash(), pub_key_hash);
+}
+
+#[test]
+fn test_txoutput_new_with_different_values() {
+    use rust_blockchain::wallet::wallet_util::convert_address;
+    
+    let pub_key_hash = b"test_key";
+    let address = convert_address(pub_key_hash);
+    
+    let test_values = vec![0, 1, -1, 1000, -1000, i32::MAX, i32::MIN];
+    
+    for value in test_values {
+        let output = TXOutput::new(value, &address);
+        assert_eq!(output.get_value(), value);
+        assert_eq!(output.get_pub_key_hash(), pub_key_hash);
+    }
+}
+
+#[test]
+fn test_txoutput_new_with_different_pub_key_hashes() {
+    use rust_blockchain::wallet::wallet_util::convert_address;
+    
+    let test_hashes = vec![
+        b"short".to_vec(),
+        b"medium_length_hash".to_vec(),
+        b"very_long_public_key_hash_for_comprehensive_testing".to_vec(),
+        vec![0u8; 20], // Standard Bitcoin address length
+        vec![255u8; 32], // Longer hash
+        (0..33).collect::<Vec<u8>>(), // Sequential bytes
+    ];
+    
+    for pub_key_hash in test_hashes {
+        let address = convert_address(&pub_key_hash);
+        let output = TXOutput::new(50, &address);
+        
+        assert_eq!(output.get_value(), 50);
+        assert_eq!(output.get_pub_key_hash(), pub_key_hash.as_slice());
+    }
+}
+
+#[test]
+fn test_txoutput_new_empty_pub_key_hash() {
+    use rust_blockchain::wallet::wallet_util::convert_address;
+    
+    let empty_hash = b"";
+    let address = convert_address(empty_hash);
+    let output = TXOutput::new(25, &address);
+    
+    assert_eq!(output.get_value(), 25);
+    assert_eq!(output.get_pub_key_hash(), empty_hash);
+}
+
+#[test]
+fn test_txoutput_new_address_parsing_integration() {
+    // Test that TXOutput::new properly integrates with wallet address generation
+    use rust_blockchain::wallet::Wallet;
+    use rust_blockchain::wallet::wallet_util::hash_pub_key;
+    
+    let wallet = Wallet::new();
+    let address = wallet.get_address();
+    let expected_pub_key_hash = hash_pub_key(wallet.get_public_key());
+    
+    let output = TXOutput::new(200, &address);
+    
+    assert_eq!(output.get_value(), 200);
+    assert_eq!(output.get_pub_key_hash(), expected_pub_key_hash.as_slice());
+}
+
+// Tests for edge cases and error handling in address parsing
+#[test]
+fn test_txoutput_new_with_invalid_base58_address() {
+    // Test with invalid base58 characters
+    let invalid_address = "0OIl"; // Contains invalid base58 characters
+    let output = TXOutput::new(100, invalid_address);
+    
+    // Should handle gracefully - base58_decode returns empty vec for invalid input
+    assert_eq!(output.get_value(), 100);
+    // The pub_key_hash will be empty or malformed, but should not crash
+}
+
+#[test]
+fn test_txoutput_new_with_empty_address() {
+    let output = TXOutput::new(75, "");
+    
+    assert_eq!(output.get_value(), 75);
+    // Empty address should result in empty pub_key_hash after processing
+}
+
+#[test]
+fn test_txoutput_new_with_short_address() {
+    // Test with address too short to have proper structure
+    let short_address = "123"; // Too short to be a valid address
+    let output = TXOutput::new(150, short_address);
+    
+    assert_eq!(output.get_value(), 150);
+    // Should handle gracefully without panicking
+}
+
+#[test]
+fn test_txoutput_new_consistency() {
+    use rust_blockchain::wallet::wallet_util::convert_address;
+    
+    let pub_key_hash = b"consistency_test_key";
+    let address = convert_address(pub_key_hash);
+    
+    // Create multiple outputs with same parameters
+    let output1 = TXOutput::new(300, &address);
+    let output2 = TXOutput::new(300, &address);
+    
+    assert_eq!(output1.get_value(), output2.get_value());
+    assert_eq!(output1.get_pub_key_hash(), output2.get_pub_key_hash());
+}
+
+#[test]
+fn test_txoutput_new_vs_manual_construction() {
+    use rust_blockchain::wallet::wallet_util::convert_address;
+    
+    let pub_key_hash = b"manual_vs_new_test";
+    let address = convert_address(pub_key_hash);
+    let value = 400;
+    
+    // Create using new() method
+    let output_new = TXOutput::new(value, &address);
+    
+    // Create manually and verify they match
+    let manual_output = TXOutput {
+        value,
+        pub_key_hash: pub_key_hash.to_vec(),
+    };
+    
+    assert_eq!(output_new.get_value(), manual_output.get_value());
+    assert_eq!(output_new.get_pub_key_hash(), manual_output.get_pub_key_hash());
+}
+
+// Tests for the lock mechanism and address format understanding
+#[test]
+fn test_txoutput_lock_mechanism_with_known_address_structure() {
+    use rust_blockchain::wallet::VERSION;
+    use rust_blockchain::wallet::wallet_util::{checksum, convert_address};
+    use rust_blockchain::util::base58_encode;
+    
+    // Create a known address structure manually
+    let test_pub_key_hash = b"known_structure_test";
+    let mut payload = vec![];
+    payload.push(VERSION); // Version byte
+    payload.extend_from_slice(test_pub_key_hash); // Public key hash
+    let checksum_bytes = checksum(&payload);
+    payload.extend_from_slice(&checksum_bytes); // Checksum
+    
+    let manual_address = base58_encode(&payload);
+    
+    // Test that TXOutput::new extracts the correct pub_key_hash
+    let output = TXOutput::new(500, &manual_address);
+    
+    assert_eq!(output.get_value(), 500);
+    assert_eq!(output.get_pub_key_hash(), test_pub_key_hash);
+    
+    // Verify it matches what convert_address would produce
+    let standard_address = convert_address(test_pub_key_hash);
+    let standard_output = TXOutput::new(500, &standard_address);
+    assert_eq!(output.get_pub_key_hash(), standard_output.get_pub_key_hash());
+}
+
+#[test]
+fn test_txoutput_new_with_multiple_wallets() {
+    use rust_blockchain::wallet::Wallet;
+    
+    // Test with multiple different wallets to ensure uniqueness
+    let mut wallet_outputs = Vec::new();
+    
+    for i in 0..5 {
+        let wallet = Wallet::new();
+        let address = wallet.get_address();
+        let output = TXOutput::new(i * 100, &address);
+        
+        wallet_outputs.push((output, wallet));
+    }
+    
+    // Verify all outputs have different pub_key_hashes
+    for i in 0..wallet_outputs.len() {
+        for j in i + 1..wallet_outputs.len() {
+            assert_ne!(
+                wallet_outputs[i].0.get_pub_key_hash(),
+                wallet_outputs[j].0.get_pub_key_hash(),
+                "Wallet {i} and {j} produced same pub_key_hash"
+            );
+        }
+    }
+}
+
+#[test]
+fn test_txoutput_new_preserves_address_validation() {
+    use rust_blockchain::wallet::wallet_util::{convert_address, validate_address};
+    
+    let pub_key_hash = b"validation_test_key";
+    let address = convert_address(pub_key_hash);
+    
+    // Verify the address is valid before using it
+    assert!(validate_address(&address));
+    
+    let output = TXOutput::new(600, &address);
+    
+    assert_eq!(output.get_value(), 600);
+    assert_eq!(output.get_pub_key_hash(), pub_key_hash);
+}
+
+#[test]
+fn test_txoutput_new_deterministic_behavior() {
+    use rust_blockchain::wallet::wallet_util::convert_address;
+    
+    let pub_key_hash = b"deterministic_test";
+    let address = convert_address(pub_key_hash);
+    
+    // Create the same output multiple times
+    let outputs: Vec<TXOutput> = (0..10)
+        .map(|_| TXOutput::new(700, &address))
+        .collect();
+    
+    // All outputs should be identical
+    for i in 1..outputs.len() {
+        assert_eq!(outputs[0].get_value(), outputs[i].get_value());
+        assert_eq!(outputs[0].get_pub_key_hash(), outputs[i].get_pub_key_hash());
+    }
+}
+
+#[test]
+fn test_txoutput_new_with_is_locked_with_key_integration() {
+    use rust_blockchain::wallet::wallet_util::convert_address;
+    
+    let correct_pub_key_hash = b"correct_key_hash";
+    let wrong_pub_key_hash = b"wrong_key_hash";
+    
+    let address = convert_address(correct_pub_key_hash);
+    let output = TXOutput::new(800, &address);
+    
+    // Should be locked with the correct key
+    assert!(output.is_locked_with_key(correct_pub_key_hash));
+    
+    // Should NOT be locked with a different key
+    assert!(!output.is_locked_with_key(wrong_pub_key_hash));
+}
+
+#[test] 
+fn test_txoutput_new_serialization_roundtrip() {
+    use rust_blockchain::wallet::wallet_util::convert_address;
+    
+    let pub_key_hash = b"serialization_roundtrip_test";
+    let address = convert_address(pub_key_hash);
+    let original = TXOutput::new(900, &address);
+    
+    // Test serialization roundtrip
+    let encoded = bincode::encode_to_vec(&original, bincode::config::standard()).unwrap();
+    let (decoded, _): (TXOutput, usize) = 
+        bincode::decode_from_slice(&encoded, bincode::config::standard()).unwrap();
+    
+    assert_eq!(original.get_value(), decoded.get_value());
+    assert_eq!(original.get_pub_key_hash(), decoded.get_pub_key_hash());
+}
+
+#[test]
+fn test_txoutput_new_clone_behavior() {
+    use rust_blockchain::wallet::wallet_util::convert_address;
+    
+    let pub_key_hash = b"clone_test_key";
+    let address = convert_address(pub_key_hash);
+    let original = TXOutput::new(1000, &address);
+    let cloned = original.clone();
+    
+    assert_eq!(original.get_value(), cloned.get_value());
+    assert_eq!(original.get_pub_key_hash(), cloned.get_pub_key_hash());
+    
+    // Ensure they are separate instances
+    assert_ne!(
+        original.pub_key_hash.as_ptr(),
+        cloned.pub_key_hash.as_ptr()
+    );
+}
+
+// Performance test for TXOutput::new
+#[test]
+fn test_txoutput_new_performance() {
+    use rust_blockchain::wallet::wallet_util::convert_address;
+    
+    let pub_key_hash = b"performance_test_key";
+    let address = convert_address(pub_key_hash);
+    
+    let start = std::time::Instant::now();
+    for i in 0..1000 {
+        let _output = TXOutput::new(i, &address);
+    }
+    let duration = start.elapsed();
+    
+    // Should complete 1000 operations in reasonable time (< 1 second)
+    assert!(duration.as_millis() < 1000, 
+        "TXOutput::new too slow: {}ms for 1000 operations", duration.as_millis());
+}

@@ -1,4 +1,4 @@
-use rust_blockchain::util::{current_timestamp, sha256_digest, base58_encode, base58_decode, current_dir, ecdsa_p256_sha256_sign_digest, ecdsa_p256_sha256_sign_verify};
+use rust_blockchain::util::{current_timestamp, sha256_digest, base58_encode, base58_decode, current_dir, ecdsa_p256_sha256_sign_digest, ecdsa_p256_sha256_sign_verify, new_key_pair, ripemd160_digest};
 
 #[test]
 fn test_current_timestamp() {
@@ -875,4 +875,284 @@ fn test_ecdsa_p256_sha256_cross_verification() {
             }
         }
     }
-} 
+}
+
+// Tests for new_key_pair function
+
+#[test]
+fn test_new_key_pair_basic() {
+    // Test that new_key_pair generates a valid key pair
+    let key_pair_bytes = new_key_pair();
+    
+    // Should not be empty
+    assert!(!key_pair_bytes.is_empty());
+    
+    // Should be a reasonable size (PKCS8 encoded ECDSA key pair)
+    // P-256 PKCS8 private keys are typically around 138 bytes
+    assert!(key_pair_bytes.len() > 100);
+    assert!(key_pair_bytes.len() < 200);
+}
+
+#[test]
+fn test_new_key_pair_consistency() {
+    // Test that each call generates a new, unique key pair
+    let key_pair1 = new_key_pair();
+    let key_pair2 = new_key_pair();
+    
+    // Should be different each time
+    assert_ne!(key_pair1, key_pair2);
+    
+    // Both should be valid length
+    assert!(!key_pair1.is_empty());
+    assert!(!key_pair2.is_empty());
+}
+
+#[test]
+fn test_new_key_pair_multiple_generation() {
+    // Test generating multiple key pairs
+    let mut key_pairs = Vec::new();
+    
+    for _ in 0..5 {
+        let key_pair = new_key_pair();
+        assert!(!key_pair.is_empty());
+        
+        // Ensure this key pair is unique
+        for existing_key_pair in &key_pairs {
+            assert_ne!(key_pair, *existing_key_pair);
+        }
+        
+        key_pairs.push(key_pair);
+    }
+    
+    // All should be different
+    assert_eq!(key_pairs.len(), 5);
+}
+
+#[test]
+fn test_new_key_pair_with_crypto_operations() {
+    use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING, KeyPair};
+    use ring::rand::SystemRandom;
+
+    // Generate a key pair using new_key_pair
+    let pkcs8_bytes = new_key_pair();
+    
+    // Test that it can be used with ring's ECDSA operations
+    let rng = SystemRandom::new();
+    let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &pkcs8_bytes, &rng);
+    
+    // Should be able to create a valid key pair
+    assert!(key_pair.is_ok());
+    
+    let key_pair = key_pair.unwrap();
+    let public_key = key_pair.public_key().as_ref();
+    
+    // Public key should not be empty
+    assert!(!public_key.is_empty());
+    
+    // Test that we can sign with the generated key
+    let message = b"test message";
+    let signature = ecdsa_p256_sha256_sign_digest(&pkcs8_bytes, message);
+    
+    // Should produce a valid signature
+    assert!(!signature.is_empty());
+    
+    // Should be able to verify the signature
+    let is_valid = ecdsa_p256_sha256_sign_verify(public_key, &signature, message);
+    assert!(is_valid);
+}
+
+#[test]
+fn test_new_key_pair_integration_with_existing_functions() {
+    // Test integration with existing cryptographic functions
+    let message = b"integration test message";
+    
+    // Generate multiple key pairs and test each one
+    for i in 0..3 {
+        let pkcs8_bytes = new_key_pair();
+        
+        // Test signing
+        let signature = ecdsa_p256_sha256_sign_digest(&pkcs8_bytes, message);
+        assert!(!signature.is_empty(), "Signature should not be empty for iteration {i}");
+        
+        // Extract public key and test verification
+        use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING, KeyPair};
+        use ring::rand::SystemRandom;
+        
+        let rng = SystemRandom::new();
+        let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &pkcs8_bytes, &rng).unwrap();
+        let public_key = key_pair.public_key().as_ref();
+        
+        let is_valid = ecdsa_p256_sha256_sign_verify(public_key, &signature, message);
+        assert!(is_valid, "Signature should be valid for iteration {i}");
+    }
+}
+
+// Tests for ripemd160_digest function
+
+#[test]
+fn test_ripemd160_digest_empty_input() {
+    // Test with empty input
+    let result = ripemd160_digest(&[]);
+    
+    // RIPEMD160 of empty string is known
+    let expected = vec![
+        0x9c, 0x11, 0x85, 0xa5, 0xc5, 0xe9, 0xfc, 0x54, 0x61, 0x28,
+        0x08, 0x97, 0x7e, 0xe8, 0xf5, 0x48, 0xb2, 0x25, 0x8d, 0x31
+    ];
+    
+    assert_eq!(result, expected);
+    assert_eq!(result.len(), 20); // RIPEMD160 produces 20 bytes
+}
+
+#[test]
+fn test_ripemd160_digest_abc() {
+    // Test with "abc" - known test vector
+    let input = b"abc";
+    let result = ripemd160_digest(input);
+    
+    // Known RIPEMD160 hash of "abc"
+    let expected = vec![
+        0x8e, 0xb2, 0x08, 0xf7, 0xe0, 0x5d, 0x98, 0x7a, 0x9b, 0x04,
+        0x4a, 0x8e, 0x98, 0xc6, 0xb0, 0x87, 0xf1, 0x5a, 0x0b, 0xfc
+    ];
+    
+    assert_eq!(result, expected);
+    assert_eq!(result.len(), 20);
+}
+
+#[test]
+fn test_ripemd160_digest_hello_world() {
+    // Test with "hello world"
+    let input = b"hello world";
+    let result = ripemd160_digest(input);
+    
+    // Known RIPEMD160 hash of "hello world"
+    let expected = vec![
+        0x98, 0xc6, 0x15, 0x78, 0x4c, 0xcb, 0x5f, 0xe5, 0x93, 0x6f,
+        0xbc, 0x0c, 0xbe, 0x9d, 0xfd, 0xb4, 0x08, 0xd9, 0x2f, 0x0f
+    ];
+    
+    assert_eq!(result, expected);
+    assert_eq!(result.len(), 20);
+}
+
+#[test]
+fn test_ripemd160_digest_consistency() {
+    // Test that same input produces same output
+    let input = b"test data for consistency";
+    let result1 = ripemd160_digest(input);
+    let result2 = ripemd160_digest(input);
+    
+    assert_eq!(result1, result2);
+    assert_eq!(result1.len(), 20);
+    assert_eq!(result2.len(), 20);
+}
+
+#[test]
+fn test_ripemd160_digest_different_inputs() {
+    // Test that different inputs produce different outputs
+    let input1 = b"test input 1";
+    let input2 = b"test input 2";
+    
+    let result1 = ripemd160_digest(input1);
+    let result2 = ripemd160_digest(input2);
+    
+    assert_ne!(result1, result2);
+    assert_eq!(result1.len(), 20);
+    assert_eq!(result2.len(), 20);
+}
+
+#[test]
+fn test_ripemd160_digest_large_input() {
+    // Test with large input
+    let large_input = vec![0u8; 10000]; // 10KB of zeros
+    let result = ripemd160_digest(&large_input);
+    
+    assert_eq!(result.len(), 20);
+    // Verify it's different from empty input
+    let empty_result = ripemd160_digest(&[]);
+    assert_ne!(result, empty_result);
+}
+
+#[test]
+fn test_ripemd160_digest_binary_data() {
+    // Test with binary data (not just text)
+    let binary_data = vec![0x00, 0xFF, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0];
+    let result = ripemd160_digest(&binary_data);
+    
+    assert_eq!(result.len(), 20);
+    
+    // Test that it's different from similar but different data
+    let similar_data = vec![0x00, 0xFF, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF1];
+    let similar_result = ripemd160_digest(&similar_data);
+    assert_ne!(result, similar_result);
+}
+
+#[test]
+fn test_ripemd160_digest_output_format() {
+    // Test that output is always 20 bytes regardless of input size
+    let inputs = vec![
+        vec![],
+        vec![0x01],
+        vec![0x01, 0x02],
+        vec![0x01; 100],
+        vec![0xFF; 1000],
+    ];
+    
+    for input in inputs {
+        let result = ripemd160_digest(&input);
+        assert_eq!(result.len(), 20, "RIPEMD160 should always produce 20 bytes");
+    }
+}
+
+#[test]
+fn test_ripemd160_digest_unicode_text() {
+    // Test with Unicode text
+    let unicode_text = "Hello, 世界! 🚀";
+    let input = unicode_text.as_bytes();
+    let result = ripemd160_digest(input);
+    
+    assert_eq!(result.len(), 20);
+    
+    // Should be different from ASCII version
+    let ascii_result = ripemd160_digest(b"Hello, World!");
+    assert_ne!(result, ascii_result);
+}
+
+#[test]
+fn test_ripemd160_digest_vs_sha256() {
+    // Test that RIPEMD160 produces different results than SHA256 for same input
+    let input = b"compare hash functions";
+    
+    let ripemd160_result = ripemd160_digest(input);
+    let sha256_result = sha256_digest(input);
+    
+    // Different hash functions should produce different results
+    assert_ne!(ripemd160_result.len(), sha256_result.len());
+    assert_eq!(ripemd160_result.len(), 20);
+    assert_eq!(sha256_result.len(), 32);
+    
+    // Results should be different (they're different lengths anyway, but good to verify)
+    assert_ne!(ripemd160_result, sha256_result[..20]);
+}
+
+#[test]
+fn test_ripemd160_digest_incremental_changes() {
+    // Test that small changes in input produce very different outputs
+    let base_input = b"test message";
+    let modified_input = b"test messagi"; // changed last character
+    
+    let base_result = ripemd160_digest(base_input);
+    let modified_result = ripemd160_digest(modified_input);
+    
+    assert_ne!(base_result, modified_result);
+    
+    // Count how many bytes are different (should be many due to avalanche effect)
+    let different_bytes = base_result.iter()
+        .zip(modified_result.iter())
+        .filter(|(a, b)| a != b)
+        .count();
+    
+    // At least half the bytes should be different (avalanche effect)
+    assert!(different_bytes >= 10, "Expected avalanche effect, only {different_bytes} bytes different");
+}

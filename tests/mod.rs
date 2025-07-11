@@ -8,4 +8,5 @@ mod proof_of_work;
 mod server;
 mod test_helpers;
 mod transaction;
-mod utxo_set; 
+mod utxo_set;
+mod wallet; 
