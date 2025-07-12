@@ -1,13 +1,63 @@
 use bincode::config::standard;
+use data_encoding::HEXLOWER;
 use uuid::Uuid;
 
 use crate::{
-    transaction::{data::transaction::SUBSIDY, Transaction}, util::{ecdsa_p256_sha256_sign_verify, sha256_digest}, Blockchain, TXInput, TXOutput
+    transaction::{data::transaction::SUBSIDY, Transaction}, util::{self, ecdsa_p256_sha256_sign_verify, sha256_digest}, wallet::{wallet_util::hash_pub_key, Wallets}, Blockchain, TXInput, TXOutput, UTXOSet
 };
 
 impl Transaction {
     pub fn new(id: Vec<u8>, vin: Vec<TXInput>, vout: Vec<TXOutput>) -> Transaction {
         Transaction { id, vin, vout }
+    }
+
+    pub fn new_utxo_transaction(
+        from: &str,
+        to: &str,
+        amount: i32,
+        utxo_set: &UTXOSet,
+    ) -> Transaction {
+        let wallets = Wallets::new();
+        let wallet = wallets.get_wallet(from).expect("unable to found wallet");
+        let public_key_hash = hash_pub_key(wallet.get_public_key());
+
+        let (accumulated, valid_outputs) =
+            utxo_set.find_spendable_outputs(public_key_hash.as_slice(), amount);
+        if accumulated < amount {
+            panic!("Error: Not enough funds")
+        }
+
+        let mut inputs = vec![];
+        for (txid_hex, outs) in valid_outputs {
+            let txid = HEXLOWER.decode(txid_hex.as_bytes()).unwrap();
+            for out in outs {
+                let input = TXInput {
+                    txid: txid.clone(),
+                    vout: out,
+                    signature: vec![],
+                    pub_key: wallet.get_public_key().to_vec(),
+                };
+                inputs.push(input);
+            }
+        }
+
+        let mut outputs = vec![TXOutput::new(amount, to)];
+
+        if accumulated > amount {
+            outputs.push(TXOutput::new(accumulated - amount, from)) // to: 币收入
+        }
+
+        let mut tx = Transaction {
+            id: vec![],
+            vin: inputs,
+            vout: outputs,
+        };
+
+        tx.id = tx.hash();
+
+        tx.sign(utxo_set.get_blockchain(), wallet.get_pkcs8());
+
+        tx
     }
 
     pub fn new_coinbase_tx(to: &str) -> Transaction {
@@ -57,6 +107,25 @@ impl Transaction {
             vout: self.vout.clone(),
         };
         sha256_digest(tx_copy.serialize().as_slice())
+    }
+
+    fn sign(&mut self, blockchain: &Blockchain, pkcs8: &[u8]) {
+        let mut tx_copy = self.trimmed_copy();
+
+        for (idx, vin) in self.vin.iter_mut().enumerate() {
+            let prev_tx_option = blockchain.find_transaction(vin.get_txid());
+            if prev_tx_option.is_none() {
+                panic!("ERROR: Previous transaction is not correct")
+            }
+            let prev_tx = prev_tx_option.unwrap();
+            tx_copy.vin[idx].signature = vec![];
+            tx_copy.vin[idx].pub_key = prev_tx.vout[vin.vout].pub_key_hash.clone();
+            tx_copy.id = tx_copy.hash();
+            tx_copy.vin[idx].pub_key = vec![];
+
+            let signature = util::ecdsa_p256_sha256_sign_digest(pkcs8, tx_copy.get_id());
+            vin.signature = signature;
+        }
     }
 
     pub fn verify(&self, blockchain: &Blockchain) -> bool {

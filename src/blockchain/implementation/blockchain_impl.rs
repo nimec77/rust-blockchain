@@ -7,12 +7,37 @@ use data_encoding::HEXLOWER;
 use sled::{Db, Tree, transaction::TransactionResult};
 
 use crate::{
-    Block, BlockchainIterator, TXOutput, Transaction,
-    blockchain::{BLOCKS_TREE, Blockchain, TIP_BLOCK_HASH_KEY},
-    util,
+    blockchain::{Blockchain, BLOCKS_TREE, TIP_BLOCK_HASH_KEY}, util::{self, current_dir}, Block, BlockchainIterator, TXOutput, Transaction
 };
 
 impl Blockchain {
+    pub fn create_blockchain(genesis_address: &str) -> Blockchain {
+        let db = sled::open(current_dir().join("data")).unwrap();
+        let blocks_tree = db.open_tree(BLOCKS_TREE).unwrap();
+
+        let data = blocks_tree.get(TIP_BLOCK_HASH_KEY).unwrap();
+        let tip_hash = if let Some(data) = data {
+            String::from_utf8(data.to_vec()).unwrap()
+        } else {
+            let coinbase_tx = Transaction::new_coinbase_tx(genesis_address);
+            let mut block = Block::generate_genesis_block(&coinbase_tx);
+            
+            // Genesis blocks from generate_genesis_block have empty hashes
+            // Set a proper hash for the genesis block
+            if block.get_hash().is_empty() {
+                let genesis_hash = format!("genesis_{}", util::current_timestamp());
+                block.set_hash_for_test(&genesis_hash);
+            }
+            
+            Self::update_blocks_tree(&blocks_tree, &block);
+            String::from(block.get_hash())
+        };
+        Blockchain {
+            tip_hash: Arc::new(RwLock::new(tip_hash)),
+            db,
+        }
+    }
+
     pub fn new_blockchain() -> Blockchain {
         let db = sled::open(util::current_dir().join("data")).unwrap();
         let blocks_tree = db.open_tree(BLOCKS_TREE).unwrap();

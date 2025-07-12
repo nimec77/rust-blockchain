@@ -10,6 +10,7 @@ pub mod config;
 pub mod utxo_set;
 pub mod server;
 pub mod wallet;
+pub mod command;
 
 // Convenience re-exports for commonly used types
 pub use block::Block;
