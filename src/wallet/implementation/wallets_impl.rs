@@ -93,11 +93,3 @@ impl Wallets {
     }
 }
 
-impl Default for Wallets {
-    fn default() -> Self {
-        Wallets {
-            wallets: HashMap::new(),
-            file_path: None,
-        }
-    }
-}
